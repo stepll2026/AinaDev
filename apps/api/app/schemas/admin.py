@@ -1,0 +1,153 @@
+"""Pydantic schemas：管理侧（模型配置/知识库/资讯源/审核/审计）。"""
+from datetime import datetime
+
+from pydantic import BaseModel
+
+
+# ---------- 模型配置 ----------
+class ModelConfigIn(BaseModel):
+    name: str
+    provider: str = "openai_compatible"
+    base_url: str
+    api_key: str | None = None  # 回填时若为空则保持原值
+    chat_model: str
+    embedding_model: str | None = None
+    embedding_dim: int = 2048
+    context_length: int = 128000
+    max_tokens: int = 2048
+    is_default: bool = False
+    enabled: bool = True
+
+
+class ModelConfigOut(BaseModel):
+    id: int
+    name: str
+    provider: str
+    base_url: str
+    chat_model: str
+    embedding_model: str | None
+    embedding_dim: int
+    context_length: int
+    max_tokens: int
+    is_default: bool
+    enabled: bool
+    created_at: datetime
+    has_api_key: bool = False  # 是否已配置 Key（不回传明文）
+
+    model_config = {"from_attributes": True}
+
+
+# ---------- 知识库 ----------
+class RagDocumentOut(BaseModel):
+    id: int
+    category_id: int
+    filename: str
+    file_type: str
+    status: str
+    chunk_count: int
+    enabled: bool
+    error: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---------- 资讯源 ----------
+class NewsSourceIn(BaseModel):
+    name: str
+    type: str = "rss"
+    url: str
+    target_category_id: int | None = None
+    enabled: bool = True
+    fetch_cron: str | None = None
+
+
+class NewsSourceOut(BaseModel):
+    id: int
+    name: str
+    type: str
+    url: str
+    target_category_id: int | None
+    enabled: bool
+    fetch_cron: str | None
+    last_fetched_at: datetime | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---------- 审核 ----------
+class ReviewItemOut(BaseModel):
+    kind: str  # post_mid / reply_low_conf / report
+    id: int
+    title: str | None = None
+    body: str | None = None
+    author_name: str | None = None
+    created_at: datetime | None = None
+    reason: str | None = None
+    score: float | None = None
+    target_id: int | None = None
+    target_type: str | None = None
+
+
+class ReviewAction(BaseModel):
+    action: str  # approve / hide / delete / warn / dismiss
+    resolution: str | None = None
+
+
+# ---------- 审计 ----------
+class AuditLogOut(BaseModel):
+    id: int
+    actor_type: str
+    actor_id: int | None
+    action: str
+    target_type: str | None
+    target_id: int | None
+    detail: dict | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class AgentRunOut(BaseModel):
+    id: int
+    trace_id: str
+    trigger_type: str
+    post_id: int | None
+    category_id: int | None
+    ai_admin_id: int | None
+    node: str
+    decision: str | None
+    score: float | None
+    tokens_in: int
+    tokens_out: int
+    latency_ms: int
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ---------- 站点配置 ----------
+class SiteConfigIn(BaseModel):
+    site_name: str | None = None
+    site_description: str | None = None
+    mcp_api_key: str | None = None
+    smtp_host: str | None = None
+    smtp_port: int | None = None
+    smtp_user: str | None = None
+    smtp_password: str | None = None
+    smtp_from: str | None = None
+    invite_expire_days: int | None = None
+    upload_allowed_types: str | None = None   # 逗号分隔，如 "png,jpg,pdf"
+    upload_max_size_mb: int | None = None     # 单文件大小上限 MB
+
+
+class StatsOut(BaseModel):
+    user_count: int
+    post_count: int
+    reply_count: int
+    today_posts: int
+    pending_reviews: int
+    open_reports: int
+    ai_replies: int
+    doc_count: int

@@ -1,0 +1,21 @@
+"""Pydantic schemas 统一导出。"""
+from app.schemas.auth import (
+    RegisterIn, LoginIn, TokenOut, RefreshIn, UserOut, UserAdminUpdate, InviteCreate, InviteOut, ChangePasswordIn,
+)
+from app.schemas.forum import (
+    CategoryIn, CategoryUpdate, CategoryOut, AiAdminBrief, HumanAdminOut, AiAdminIn, AiAdminOut,
+    PostIn, PostOut, PostListOut, PostModerate, ReplyIn, ReplyOut, SearchQuery,
+)
+from app.schemas.admin import (
+    ModelConfigIn, ModelConfigOut, RagDocumentOut, NewsSourceIn, NewsSourceOut,
+    ReviewItemOut, ReviewAction, AuditLogOut, AgentRunOut, SiteConfigIn, StatsOut,
+)
+
+__all__ = [
+    "RegisterIn", "LoginIn", "TokenOut", "RefreshIn", "UserOut", "UserAdminUpdate", "InviteCreate", "InviteOut",
+    "ChangePasswordIn",
+    "CategoryIn", "CategoryUpdate", "CategoryOut", "AiAdminBrief", "HumanAdminOut", "AiAdminIn", "AiAdminOut",
+    "PostIn", "PostOut", "PostListOut", "PostModerate", "ReplyIn", "ReplyOut", "SearchQuery",
+    "ModelConfigIn", "ModelConfigOut", "RagDocumentOut", "NewsSourceIn", "NewsSourceOut",
+    "ReviewItemOut", "ReviewAction", "AuditLogOut", "AgentRunOut", "SiteConfigIn", "StatsOut",
+]
