@@ -148,6 +148,8 @@ async def get_review_queue() -> list[dict[str, Any]]:
 @mcp.tool()
 async def review_action(kind: str, id: int, action: str, resolution: str | None = None) -> dict[str, Any]:
     """处置审核项。kind: post_mid/reply_low_conf/report；action: approve/hide/delete/warn/dismiss。"""
+    from sqlalchemy.ext.asyncio import AsyncSession
+
     from app.models import Post, Reply, Report
     from app.services.audit_service import audit
 
@@ -184,7 +186,9 @@ async def moderate_post(post_id: int, action: str, category_id: int | None = Non
     """帖子管理操作：pin/unpin、feature/unfeature、lock/unlock、delete、restore、move（需 category_id）。"""
     from datetime import datetime, timezone
 
-    from app.models import Post
+    from sqlalchemy import update
+
+    from app.models import Post, Reply
     from app.services.audit_service import audit
 
     async with SessionLocal() as db:
