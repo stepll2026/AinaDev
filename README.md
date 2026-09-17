@@ -142,6 +142,12 @@ docker compose -f docker-compose.prod.yml up -d --build
 ```
 
 - 首次启动自动建表 + 写入默认栏目与种子数据
+- 可选：初始化演示数据（3 个演示用户 + 3 篇知识库文档 + 10 篇帖子 + 互动），需先配置好模型 Key 与 AI 管理员：
+  ```bash
+  docker compose -f docker-compose.prod.yml exec api python seed_demo_data.py
+  docker compose -f docker-compose.prod.yml exec api python seed_demo_data2.py
+  ```
+  > 脚本超管密码默认从环境变量 `ADMIN_PASSWORD` 读取（缺省仅限本地演示，生产勿用）。
 - 若 80 端口被占用，编辑 `docker-compose.prod.yml`，把 `8090:80` 改成其他端口（如 `8080:80`），并同步修改 `.env` 的 `PUBLIC_BASE_URL`
 
 ### 第 4 步：验证
