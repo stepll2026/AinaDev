@@ -1,0 +1,48 @@
+# AI 原生开发者社区 - 生产部署编排（使用云端 PostgreSQL / Redis）
+# 用法：docker compose -f docker-compose.prod.yml up -d --build
+# 前置：.env 中 DATABASE_URL / REDIS_URL 指向云端数据库；首次启动自动建表 + 种子
+services:
+  api:
+    build: ./apps/api
+    container_name: community-api
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - uploads:/app/uploads
+    expose:
+      - "8000"
+
+  worker:
+    build: ./apps/api
+    container_name: community-worker
+    command: ["python", "-m", "app.tasks.worker"]
+    env_file: .env
+    restart: unless-stopped
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      - api
+
+  web:
+    build: ./apps/web
+    container_name: community-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    expose:
+      - "3000"
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: community-nginx
+    restart: unless-stopped
+    depends_on:
+      - web
+      - api
+    ports:
+      - "8090:80"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+
+volumes:
+  uploads:

@@ -1,0 +1,19 @@
+# 依赖与构建产物
+node_modules/
+.next/
+.venv/
+__pycache__/
+*.pyc
+dist/
+build/
+
+# 环境与敏感信息
+.env
+.env.local
+
+# 上传文件
+uploads/
+
+# 系统
+.DS_Store
+Thumbs.db
