@@ -85,7 +85,7 @@
 1. **一台 Linux 服务器**（Ubuntu 22.04+ / Debian 12+ 推荐），已装 Docker 与 Docker Compose v2：
 
    ```bash
-   docker --version          # 建议 24+
+   docker --version          # 建议 24+ 
    docker compose version    # 建议 2.20+
    ```
 
@@ -131,7 +131,7 @@ vim .env   # 按下方表格填写
 | `JWT_SECRET` | 随机 32 字节 hex：`openssl rand -hex 32` | |
 | `AES_KEY` | AES-256 密钥（32 字节 hex）：`openssl rand -hex 32`，用于加密模型 API Key | |
 | `MCP_API_KEY` | MCP 访问令牌（豆包工作配置时填 Bearer） | |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | 初始超管（首次启动自动创建） | |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | 初始超管（首次启动自动创建；未配置时自动生成随机密码并打印到日志） | |
 
 **可选项**：`SITE_NAME`、`SITE_DESCRIPTION`、`INVITE_EXPIRE_DAYS`、`SMTP_*`（邮件通知）、`DEFAULT_LLM_*`（默认模型，首次启动写入库，之后后台可改）。
 
