@@ -85,7 +85,7 @@
 1. **一台 Linux 服务器**（Ubuntu 22.04+ / Debian 12+ 推荐），已装 Docker 与 Docker Compose v2：
 
    ```bash
-   docker --version          # 建议 24+ 
+   docker --version          # 建议 24+
    docker compose version    # 建议 2.20+
    ```
 
