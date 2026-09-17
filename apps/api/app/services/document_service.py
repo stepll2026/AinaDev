@@ -1,5 +1,6 @@
 """文档入库服务：解析 → 切片 → embedding → 入库。"""
 import logging
+import re
 from pathlib import Path
 
 from sqlalchemy.ext.asyncio import AsyncSession

@@ -1,4 +1,5 @@
 """附件上传 API：图片/文档，格式与大小限制后台可调（site_configs）。"""
+import mimetypes
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path

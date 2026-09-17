@@ -10,6 +10,7 @@ from app.models import ModelConfig, User
 from app.schemas import ModelConfigIn, ModelConfigOut
 from app.services.audit_service import audit
 from app.services.llm import LLMConfig
+from app.services.model_service import get_default_llm_config
 
 router = APIRouter(prefix="/api/admin/model-configs", tags=["admin-models"])
 
