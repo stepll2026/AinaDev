@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+@theme {
+  /* GitHub 风格中性色板 */
+  --color-bg: #f6f8fa;
+  --color-card: #ffffff;
+  --color-fg: #24292f;
+  --color-muted: #656d76;
+  --color-border: #d0d7de;
+  --color-accent: #0969da;
+  --color-accent-dark: #0550ae;
+  --color-success: #1a7f37;
+  --color-warning: #9a6700;
+  --color-danger: #cf222e;
+  --color-code-bg: #0d1117;
+  --font-sans: -apple-system, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: ui-monospace, Menlo, Consolas, "SF Mono", monospace;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Markdown 渲染 */
+.md-body {
+  font-size: 16px;
+  line-height: 1.7;
+  word-break: break-word;
+}
+.md-body h1 { font-size: 24px; font-weight: 600; margin: 24px 0 12px; border-bottom: 1px solid var(--color-border); padding-bottom: 8px; }
+.md-body h2 { font-size: 20px; font-weight: 600; margin: 22px 0 10px; }
+.md-body h3 { font-size: 17px; font-weight: 600; margin: 18px 0 8px; }
+.md-body p { margin: 10px 0; }
+.md-body a { color: var(--color-accent); text-decoration: none; }
+.md-body a:hover { text-decoration: underline; }
+.md-body code { font-family: var(--font-mono); font-size: 13px; background: rgba(175, 184, 193, 0.2); padding: 2px 5px; border-radius: 4px; }
+.md-body pre { background: var(--color-code-bg); color: #e6edf3; padding: 12px 14px; border-radius: 6px; overflow-x: auto; margin: 12px 0; }
+.md-body pre code { background: transparent; padding: 0; color: inherit; font-size: 13px; }
+.md-body blockquote { border-left: 3px solid var(--color-border); padding-left: 12px; color: var(--color-muted); margin: 10px 0; }
+.md-body ul, .md-body ol { padding-left: 24px; margin: 8px 0; }
+.md-body ul { list-style: disc; }
+.md-body ol { list-style: decimal; }
+.md-body table { border-collapse: collapse; margin: 12px 0; width: 100%; }
+.md-body th, .md-body td { border: 1px solid var(--color-border); padding: 6px 12px; font-size: 14px; }
+.md-body th { background: rgba(175, 184, 193, 0.12); }
+.md-body tr:nth-child(even) { background: rgba(175, 184, 193, 0.06); }
+.md-body img { max-width: 100%; }
+.md-body input[type="checkbox"] { margin-right: 6px; }
