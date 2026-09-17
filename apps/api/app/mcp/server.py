@@ -31,12 +31,12 @@ async def rag_search(category_id: int, query: str, top_k: int = 5) -> list[dict[
     from app.services.rag_service import fetch_chunks, hybrid_search
 
     async with SessionLocal() as db:
-        ranked = await hybrid_search(db, category_id, query, top_k=top_k, vector_top=20, fts_top=20)
+        ranked = await hybrid_search(db, category_id, query, top_k=top_k)
         chunks = await fetch_chunks(db, [r["chunk_id"] for r in ranked])
         return [
             {
-                "chunk_id": c.id, "document_id": c.document_id, "category_id": c.category_id,
-                "content": c.content[:1500], "filename": (c.meta_data or {}).get("filename"),
+                "chunk_id": c.id, "document_id": c.document_id, "title": c.title,
+                "content": c.content, "filename": (c.meta_data or {}).get("filename"),
                 "score": next((r["score"] for r in ranked if r["chunk_id"] == c.id), 0.0),
             }
             for c in chunks

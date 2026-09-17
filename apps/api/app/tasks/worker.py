@@ -89,7 +89,12 @@ FUNCTIONS = [
 
 
 def get_cron_jobs() -> list:
-    """定时任务：资讯/周报/48h 提醒/归档/AI 管理员健康。"""
+    """定时任务：资讯/周报/48h 提醒/归档/AI 管理员健康。
+
+    arq 0.28 CronJob 签名：CronJob(name, coroutine, month, day, weekday, hour,
+    minute, second, microsecond, run_at_startup, unique, job_id, timeout_s,
+    keep_result_s, keep_result_forever, max_tries)。weekday: 0=周一 ... 6=周日。
+    """
     from arq.worker import CronJob
 
     def cjob(name: str, func, *, weekday=None, hour=None, minute=0, run_at_startup=False) -> CronJob:
