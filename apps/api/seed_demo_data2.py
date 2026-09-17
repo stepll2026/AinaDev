@@ -2,11 +2,15 @@
 """模拟数据补充：知识库文档（DB 直插+同步向量化）+ 修正帖子弹 + AI 回帖验证。"""
 import asyncio
 import json
+import os
 import selectors
 import sys
 import urllib.request
 
 BASE = "http://localhost:8000/api"
+
+# 演示脚本：超管密码从环境变量 ADMIN_PASSWORD 读取（缺省仅限本地演示 admin123456，生产勿用）
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123456")
 
 DOCS = [
     (2, "OntiCards 产品介绍.md", "md", """# OntiCards 产品介绍
@@ -134,7 +138,7 @@ async def seed_docs_via_db():
 
 async def main():
     # 登录 admin
-    s, d = api_req("POST", "/auth/login", {"email": "admin@example.com", "password": "admin123456"})
+    s, d = api_req("POST", "/auth/login", {"email": "admin@example.com", "password": ADMIN_PASSWORD})
     if s != 200:
         print("登录失败", s, d)
         return

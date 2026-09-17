@@ -7,11 +7,15 @@
 import asyncio
 import io
 import json
+import os
 import random
 import sys
 import urllib.request
 
 BASE = "http://localhost:8000/api"
+
+# 演示脚本：超管密码从环境变量 ADMIN_PASSWORD 读取（缺省仅限本地演示 admin123456，生产勿用）
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123456")
 
 USERS = [
     ("zhangwei@demo.com", "张伟", "Test123456"),
@@ -153,7 +157,7 @@ async def api_req(method, path, body=None, token=None, form=None):
 
 async def main():
     # 0. 登录 admin
-    s, d = await api_req("POST", "/auth/login", {"email": "admin@example.com", "password": "admin123456"})
+    s, d = await api_req("POST", "/auth/login", {"email": "admin@example.com", "password": ADMIN_PASSWORD})
     if s != 200:
         print("登录失败", s, d)
         sys.exit(1)
