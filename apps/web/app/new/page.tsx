@@ -30,6 +30,7 @@ export default function NewPostPage() {
       setCats(d);
       if (d.length) setCategoryId(d[0].id);
     });
+    // 草稿自动保存
     const draft = localStorage.getItem("post_draft");
     if (draft) {
       try {

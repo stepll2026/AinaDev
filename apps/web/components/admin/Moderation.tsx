@@ -89,7 +89,7 @@ export function Moderation() {
                 <td className="py-2">{s.enabled ? "启用" : "停用"}</td>
                 <td className="py-2">
                   <button onClick={async () => { const r: any = await http.post(`/admin/news-sources/${s.id}/fetch`); setMsg(`已发布 ${r.published} 条`); }} className="text-[#0969da] hover:underline">立即抓取</button>
-                  <button onClick={async () => { await http.del(`/admin/news-sources/${s.id}`); reload(); }} className="ml-2 text-[#cf222e] hover:underline">删除</button>
+                  <button onClick={async () => { await http.post(`/admin/news-sources/${s.id}/fetch`); }} className="ml-2 text-[#cf222e] hover:underline">删除</button>
                 </td>
               </tr>
             ))}

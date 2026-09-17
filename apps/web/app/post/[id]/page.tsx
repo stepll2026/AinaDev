@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { http } from "@/lib/api";
+import { http, getToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Avatar, MarkdownView, TimeAgo } from "@/components/ui";
 import { AttachmentUploader, AttachmentList, type AttachmentItem } from "@/components/AttachmentUploader";
