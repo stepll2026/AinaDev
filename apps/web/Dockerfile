@@ -4,12 +4,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install --no-audit --no-fund
 COPY . .
-# 自托管 vditor 静态资源到 public/vditor/dist（Vditor 按 cdn+"/dist/..." 拼路径加载，
-# 整目录复制保证 i18n/lute/highlight/katex/icons/method.min.js 等全部本地可用，
-# 不依赖外网 unpkg CDN；内网/受限网络环境必须本地化）
-RUN mkdir -p public/vditor \
- && cp -r node_modules/vditor/dist public/vditor/dist \
- && find public/vditor -type f | wc -l
+# public 目录可能为空（favicon 由 app/ 提供），确保存在以便 COPY 到运行镜像
+RUN mkdir -p public
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
@@ -19,7 +15,7 @@ ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
-# public 静态资源（vditor 本地化资源等），next start 从 /app/public 提供
+# public 静态资源（favicon 等），next start 从 /app/public 提供
 COPY --from=builder /app/public ./public
 EXPOSE 3000
 CMD ["npm", "start"]
