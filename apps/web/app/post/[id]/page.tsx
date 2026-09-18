@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { http, getToken } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Avatar, MarkdownView, TimeAgo } from "@/components/ui";
-import { AttachmentUploader, AttachmentList, type AttachmentItem } from "@/components/AttachmentUploader";
+import { Sidebar } from "@/components/Sidebar";
+import { AttachmentList, type AttachmentItem } from "@/components/AttachmentUploader";
+import { VditorEditor } from "@/components/VditorEditor";
 
 function CitationPanel({ citations }: { citations: any[] | null }) {
   const [open, setOpen] = useState(false);
@@ -32,9 +34,10 @@ function CitationPanel({ citations }: { citations: any[] | null }) {
   );
 }
 
-export default function PostPage() {
+function PostInner() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [post, setPost] = useState<any>(null);
   const [replies, setReplies] = useState<any[]>([]);
@@ -88,16 +91,33 @@ export default function PostPage() {
   if (!post) return <div className="p-10 text-center text-sm text-[#656d76]">加载中…</div>;
 
   const canManage = user && (user.role === "super_admin");
+  const sort = searchParams.get("sort");
 
   return (
-    <div className="mx-auto flex max-w-[1012px] gap-8 px-4 py-6">
+    <div className="mx-auto flex max-w-[1280px] gap-8 px-4 py-6">
+      <Sidebar />
       <main className="min-w-0 flex-1">
+        {/* 面包屑 Path */}
+        <nav className="mb-3 flex items-center gap-1.5 text-[13px] text-[#656d76]">
+          <a href={sort ? `/?sort=${sort}` : "/"} className="hover:text-[#0969da]">首页</a>
+          <span>/</span>
+          {post.category_name ? (
+            <>
+              <a href={`/c/${post.category_id}`} className="hover:text-[#0969da]">{post.category_name}</a>
+              <span>/</span>
+            </>
+          ) : null}
+          <span className="truncate text-[#24292f]">{post.title}</span>
+        </nav>
+
         <div className="rounded-lg border border-[#d0d7de] bg-white p-6">
           <div className="flex flex-wrap items-center gap-2">
             {post.pinned && <span className="rounded bg-[#fff8c5] px-2 py-0.5 text-[12px] text-[#9a6700]">置顶</span>}
             {post.featured && <span className="rounded bg-[#dafbe1] px-2 py-0.5 text-[12px] text-[#1a7f37]">精华</span>}
             {post.is_solved && <span className="rounded bg-[#dafbe1] px-2 py-0.5 text-[12px] text-[#1a7f37]">已解决</span>}
             {post.locked && <span className="rounded bg-[#ffebe9] px-2 py-0.5 text-[12px] text-[#cf222e]">已锁定</span>}
+            {post.status === "pending_review" && <span className="rounded bg-[#fff8c5] px-2 py-0.5 text-[12px] text-[#9a6700]">审核中（仅自己可见）</span>}
+            {post.status === "rejected" && <span className="rounded bg-[#ffebe9] px-2 py-0.5 text-[12px] text-[#cf222e]">未通过审核</span>}
             <span className="text-[13px] text-[#656d76]">{post.category_name}</span>
           </div>
           <h1 className="mt-2 text-[20px] font-semibold leading-snug text-[#24292f]">{post.title}</h1>
@@ -216,10 +236,7 @@ export default function PostPage() {
               )}
               {user ? (
                 <>
-                  <textarea value={body} onChange={(e) => setBody(e.target.value)} placeholder="写下你的回复…（支持 Markdown）" className="min-h-[120px] w-full resize-y outline-none" />
-                  <div className="mt-2 border-t border-[#d0d7de]/60 pt-2">
-                    <AttachmentUploader attachments={attachments} onChange={setAttachments} />
-                  </div>
+                  <VditorEditor value={body} onChange={setBody} placeholder="写下你的回复…（支持 Markdown；工具栏可直接插入图片 / 附件）" height={180} />
                   {error && <div className="mb-2 rounded bg-[#ffebe9] px-3 py-1.5 text-[13px] text-[#cf222e]">{error}</div>}
                   <div className="flex justify-end">
                     <button disabled={sending} className="rounded-md bg-[#0969da] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#0550ae] disabled:opacity-60">
@@ -236,6 +253,20 @@ export default function PostPage() {
           )}
         </div>
       </main>
+      <aside className="hidden w-[280px] shrink-0 space-y-4 lg:block">
+        <div className="rounded-lg border border-[#d0d7de] bg-white p-4">
+          <div className="mb-2 text-[13px] font-semibold text-[#656d76]">公告</div>
+          <p className="text-[13px] text-[#24292f]">欢迎使用 AI 原生开发者社区</p>
+        </div>
+      </aside>
     </div>
+  );
+}
+
+export default function PostPage() {
+  return (
+    <Suspense fallback={<div className="p-10 text-center text-sm text-[#656d76]">加载中…</div>}>
+      <PostInner />
+    </Suspense>
   );
 }

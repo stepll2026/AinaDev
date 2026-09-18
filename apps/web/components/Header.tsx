@@ -2,19 +2,31 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { http } from "@/lib/api";
 import { Avatar } from "./ui";
 
 export function Header() {
   const { user, logout } = useAuth();
+  const pathname = usePathname();
   const [unread, setUnread] = useState(0);
   const [q, setQ] = useState("");
 
+  // 用户或路由变化时重新拉取未读数（进入「我的」后 read-all 会清零）
   useEffect(() => {
-    if (!user) return;
-    http.get("/me/notifications?unread_only=true&page_size=1").then((d: any) => setUnread(d.unread || 0)).catch(() => {});
-  }, [user]);
+    if (!user) {
+      setUnread(0);
+      return;
+    }
+    let cancelled = false;
+    http.get("/me/notifications?unread_only=true&page_size=1").then((d: any) => {
+      if (!cancelled) setUnread(d.unread || 0);
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [user, pathname]);
 
   return (
     <header className="sticky top-0 z-40 border-b border-[#d0d7de] bg-[#f6f8fa]/95 backdrop-blur">
@@ -36,7 +48,7 @@ export function Header() {
             className="w-full max-w-sm rounded-md border border-[#d0d7de] bg-white px-3 py-1.5 text-sm outline-none focus:border-[#0969da] focus:ring-2 focus:ring-[#0969da]/20"
           />
         </form>
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-4">
           {user ? (
             <>
               <Link href="/new" className="rounded-md bg-[#0969da] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0550ae]">

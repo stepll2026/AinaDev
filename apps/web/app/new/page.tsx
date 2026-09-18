@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { http } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { MarkdownView } from "@/components/ui";
-import { AttachmentUploader, type AttachmentItem } from "@/components/AttachmentUploader";
+import { VditorEditor } from "@/components/VditorEditor";
 
 export default function NewPostPage() {
   const { user } = useAuth();
@@ -13,13 +12,18 @@ export default function NewPostPage() {
   const [cats, setCats] = useState<any[]>([]);
   const [categoryId, setCategoryId] = useState<number>(0);
   const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(() => {
+    if (typeof window === "undefined") return "";
+    try {
+      return JSON.parse(localStorage.getItem("post_draft") || "{}").body || "";
+    } catch {
+      return "";
+    }
+  });
   const [postType, setPostType] = useState("discussion");
   const [atAi, setAtAi] = useState(true);
-  const [preview, setPreview] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
 
   useEffect(() => {
     if (!user) {
@@ -30,17 +34,6 @@ export default function NewPostPage() {
       setCats(d);
       if (d.length) setCategoryId(d[0].id);
     });
-    // 草稿自动保存
-    const draft = localStorage.getItem("post_draft");
-    if (draft) {
-      try {
-        const d = JSON.parse(draft);
-        setTitle(d.title || "");
-        setBody(d.body || "");
-      } catch {
-        /* ignore */
-      }
-    }
   }, [user, router]);
 
   useEffect(() => {
@@ -53,9 +46,11 @@ export default function NewPostPage() {
     e.preventDefault();
     setError("");
     if (!categoryId) return setError("请选择栏目");
+    if (!title.trim()) return setError("请输入标题");
+    if (!body.trim()) return setError("正文不能为空");
     setLoading(true);
     try {
-      const post = await http.post("/posts", { category_id: Number(categoryId), title, body_md: body, post_type: postType, at_ai: atAi, attachments });
+      const post = await http.post("/posts", { category_id: Number(categoryId), title, body_md: body, post_type: postType, at_ai: atAi, attachments: [] });
       localStorage.removeItem("post_draft");
       router.push(`/post/${post.id}`);
     } catch (err: any) {
@@ -93,36 +88,23 @@ export default function NewPostPage() {
           required
           className="w-full rounded-md border border-[#d0d7de] px-4 py-3 text-[20px] font-medium outline-none focus:border-[#0969da]"
         />
-        <div className="rounded-lg border border-[#d0d7de] bg-white">
-          <div className="flex items-center justify-between border-b border-[#d0d7de] px-3 py-2">
-            <span className="text-[12px] text-[#656d76]">支持 Markdown 语法</span>
-            <button type="button" onClick={() => setPreview(!preview)} className="rounded bg-[#eaeef2] px-2 py-1 text-[12px] text-[#656d76] hover:bg-[#d0d7de]">
-              {preview ? "编辑" : "预览"}
-            </button>
-          </div>
-          {preview ? (
-            <div className="min-h-[320px] px-4 py-3">
-              <MarkdownView content={body || "*（预览区）*"} />
-            </div>
-          ) : (
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder="正文内容…（支持 Markdown、代码块、表格）"
-              required
-              className="min-h-[320px] w-full resize-y px-4 py-3 font-mono text-[14px] outline-none"
-            />
-          )}
-        </div>
-        <div className="rounded-lg border border-[#d0d7de] bg-white px-3 py-3">
-          <AttachmentUploader attachments={attachments} onChange={setAttachments} />
+        <div className="overflow-hidden rounded-lg border border-[#d0d7de] bg-white">
+          <VditorEditor
+            value={body}
+            onChange={setBody}
+            placeholder="正文内容…（支持 Markdown、代码块、表格；工具栏可直接插入图片 / 附件）"
+            height={380}
+            cacheId="post-editor"
+          />
         </div>
         {error && <div className="rounded-md bg-[#ffebe9] px-3 py-2 text-[13px] text-[#cf222e]">{error}</div>}
         <div className="flex items-center gap-3">
           <button disabled={loading} className="rounded-md bg-[#0969da] px-5 py-2 text-sm font-medium text-white hover:bg-[#0550ae] disabled:opacity-60">
-            {loading ? "发布中…" : "发布"}
+            {loading ? "提交中…" : "发布"}
           </button>
-          <span className="text-[12px] text-[#656d76]">发布后 AI 将自动进行合规审查；@ AI 管理员时若知识库有证据会自动回复</span>
+          <span className="text-[12px] text-[#656d76]">
+            发帖后将先经过 AI 自动审核（仅自己可见），审核通过后公开；@ AI 管理员时若有证据会自动回复
+          </span>
         </div>
       </form>
     </div>

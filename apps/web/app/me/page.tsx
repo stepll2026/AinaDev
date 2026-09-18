@@ -20,6 +20,8 @@ export default function MePage() {
       router.push("/login");
       return;
     }
+    // 进入「我的」页即清空未读角标（Header 通过路由变化自动刷新）
+    http.post("/me/notifications/read-all").catch(() => {});
     loadTab(tab);
   }, [user, tab]);
 

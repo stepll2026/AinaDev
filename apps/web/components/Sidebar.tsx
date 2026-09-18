@@ -3,17 +3,21 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { http } from "@/lib/api";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 export function Sidebar() {
   const [cats, setCats] = useState<any[]>([]);
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     http.get("/categories").then((d) => setCats(d)).catch(() => {});
   }, []);
 
   const activeCat = pathname.startsWith("/c/") ? pathname.split("/")[2] : null;
+  const sort = searchParams.get("sort");
+  // 高亮规则：无 sort=最新；sort=hot=热门；sort=unanswered=未回答；有 sort 但非两者则不点亮浏览项
+  const browseKey = pathname === "/" ? (sort && sort !== "hot" && sort !== "unanswered" ? "none" : sort || "latest") : "none";
 
   return (
     <nav className="w-[220px] shrink-0 space-y-6">
@@ -21,15 +25,15 @@ export function Sidebar() {
         <div className="mb-2 px-2 text-[13px] font-semibold text-[#656d76]">浏览</div>
         <ul className="space-y-0.5">
           {[
-            { href: "/", label: "最新", icon: "🕐" },
-            { href: "/?sort=hot", label: "热门", icon: "🔥" },
-            { href: "/?sort=unanswered", label: "未回答", icon: "❓" },
+            { href: "/", label: "最新", key: "latest" as const, icon: "🕐" },
+            { href: "/?sort=hot", label: "热门", key: "hot" as const, icon: "🔥" },
+            { href: "/?sort=unanswered", label: "未回答", key: "unanswered" as const, icon: "❓" },
           ].map((item) => (
             <li key={item.label}>
               <Link
                 href={item.href}
                 className={`flex items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
-                  pathname === "/" && !item.href.includes("=") ? "bg-[#0969da]/10 font-medium text-[#0969da]" : "text-[#24292f] hover:bg-[#eaeef2]"
+                  browseKey === item.key ? "bg-[#0969da]/10 font-medium text-[#0969da]" : "text-[#24292f] hover:bg-[#eaeef2]"
                 }`}
               >
                 <span className="text-[13px]">{item.icon}</span> {item.label}
