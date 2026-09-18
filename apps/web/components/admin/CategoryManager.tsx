@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { http } from "@/lib/api";
 import { Modal } from "@/components/ui/Modal";
+import { EmojiPicker } from "@/components/EmojiPicker";
 
 type Cat = {
   id: number; slug: string; name: string; description?: string; icon?: string;
@@ -17,6 +18,7 @@ export function CategoryManager() {
   const [creating, setCreating] = useState<Cat | null>(null);
   const [aiEditing, setAiEditing] = useState<Cat | null>(null);
   const [adminBinding, setAdminBinding] = useState<Cat | null>(null);
+  const [iconPickerFor, setIconPickerFor] = useState<"edit" | "create" | null>(null);
   const [msg, setMsg] = useState("");
 
   const reload = async () => {
@@ -131,7 +133,14 @@ export function CategoryManager() {
               </div>
               <div>
                 <label className="mb-1 block text-[12px] text-[#656d76]">图标</label>
-                <input value={editing.icon} onChange={(e) => setEditing({ ...editing, icon: e.target.value })} className="w-full rounded border border-[#d0d7de] px-2 py-1.5 text-sm" />
+                <button
+                  type="button"
+                  onClick={() => setIconPickerFor("edit")}
+                  className="flex h-9 w-full items-center gap-2 rounded border border-[#d0d7de] px-2 text-sm hover:border-[#0969da]"
+                >
+                  <span className="text-[18px]">{editing.icon || "📁"}</span>
+                  <span className="text-[#656d76]">点击选择</span>
+                </button>
               </div>
             </div>
             <div>
@@ -165,7 +174,7 @@ export function CategoryManager() {
       <Modal open={!!creating} title="新建栏目" width={560} onClose={() => setCreating(null)}>
         {creating && (
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-3">
               <div>
                 <label className="mb-1 block text-[12px] text-[#656d76]">名称</label>
                 <input value={creating.name} onChange={(e) => setCreating({ ...creating, name: e.target.value })} className="w-full rounded border border-[#d0d7de] px-2 py-1.5 text-sm" />
@@ -173,6 +182,17 @@ export function CategoryManager() {
               <div>
                 <label className="mb-1 block text-[12px] text-[#656d76]">slug（URL 标识）</label>
                 <input value={creating.slug} onChange={(e) => setCreating({ ...creating, slug: e.target.value })} className="w-full rounded border border-[#d0d7de] px-2 py-1.5 text-sm" />
+              </div>
+              <div>
+                <label className="mb-1 block text-[12px] text-[#656d76]">图标</label>
+                <button
+                  type="button"
+                  onClick={() => setIconPickerFor("create")}
+                  className="flex h-9 w-full items-center gap-2 rounded border border-[#d0d7de] px-2 text-sm hover:border-[#0969da]"
+                >
+                  <span className="text-[18px]">{creating.icon || "📁"}</span>
+                  <span className="text-[#656d76]">点击选择</span>
+                </button>
               </div>
             </div>
             <div>
@@ -204,6 +224,18 @@ export function CategoryManager() {
       <Modal open={!!adminBinding} title={`绑定管理员 · ${adminBinding?.name || ""}`} width={520} onClose={() => setAdminBinding(null)}>
         {adminBinding && <AdminPicker cat={adminBinding} onDone={() => { setAdminBinding(null); reload(); }} />}
       </Modal>
+
+      {/* 图标选择器 */}
+      <EmojiPicker
+        open={!!iconPickerFor}
+        value={iconPickerFor === "edit" ? editing?.icon || "" : creating?.icon || ""}
+        onClose={() => setIconPickerFor(null)}
+        onConfirm={(emoji) => {
+          if (iconPickerFor === "edit" && editing) setEditing({ ...editing, icon: emoji });
+          if (iconPickerFor === "create" && creating) setCreating({ ...creating, icon: emoji });
+          setIconPickerFor(null);
+        }}
+      />
     </div>
   );
 }
