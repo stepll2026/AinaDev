@@ -48,8 +48,9 @@ class Settings(BaseSettings):
     fulltext_mode: str = "ilike"
 
     # Weaviate 独立向量库（vector_backend=weaviate 时生效；应用侧生成向量后传入，向量模式 NONE）
-    weaviate_host: str = "8.134.183.233"
-    weaviate_http_port: int = 8088
+    # 默认值为占位符，生产/部署时通过 .env 注入真实连接信息（WEAVIATE_HOST 等）
+    weaviate_host: str = "weaviate-host"
+    weaviate_http_port: int = 8080
     weaviate_grpc_port: int = 50051
     weaviate_collection: str = "AinaDev"
 
