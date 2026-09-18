@@ -6,7 +6,7 @@ import tarfile
 ROOT = r"F:\NAS\WorkBuddy\AinaDev\ai-native-community"
 OUT = os.path.join(ROOT, "deploy.tar.gz")
 
-EXCLUDE_DIRS = {"node_modules", ".venv", ".next", "uploads", ".git", "__pycache__", ".turbo"}
+EXCLUDE_DIRS = {"node_modules", ".venv", ".next", "uploads", ".git", "__pycache__", ".turbo", "vditor"}
 EXCLUDE_SUFFIX = {".pyc", ".log"}
 
 

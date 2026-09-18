@@ -7,6 +7,9 @@ __pycache__/
 dist/
 build/
 
+# vditor 静态资源由 Dockerfile 构建时从 node_modules 自动生成，不入库
+apps/web/public/vditor/
+
 # 环境与敏感信息
 .env
 .env.local

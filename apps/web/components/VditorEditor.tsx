@@ -45,6 +45,8 @@ export function VditorEditor({ value = "", onChange, placeholder = "内容…", 
         mode: "ir",
         placeholder,
         height,
+        // 静态资源自托管（public/vditor），避免依赖外网 unpkg CDN（内网/受限网络下会 404）
+        cdn: "/vditor",
         cache: cacheId ? { enable: true, id: cacheId } : { enable: false },
         toolbar,
         toolbarConfig,
