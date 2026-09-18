@@ -74,9 +74,11 @@ async def _run_pipeline(state: PipelineState, db: AsyncSession) -> None:
     from app.agent.nodes import generate_node, guardrail_node, judge_node, postprocess_node, retrieve_node, route_node
 
     try:
-        state = await guardrail_node(state, db)
-        if state.get("decision") in ("hidden", "review"):
-            return
+        # 发帖事件在发布前已由 review_post 完成 AI 合规审核（两次 AI 调用分开），此处跳过 guardrail 避免重复审核
+        if state.get("content_type") != "post":
+            state = await guardrail_node(state, db)
+            if state.get("decision") in ("hidden", "review"):
+                return
         state = await route_node(state, db)
         if not state.get("should_reply"):
             return

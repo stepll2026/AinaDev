@@ -42,10 +42,16 @@ class Settings(BaseSettings):
     upload_dir: str = "./uploads"
 
     # 检索后端自动适配：
-    # vector_backend: numpy=JSONB+应用层余弦（Windows/无 pgvector 环境）| pgvector=SQL HNSW（生产 Linux/Docker）
+    # vector_backend: numpy=JSONB+应用层余弦（Windows/无 pgvector 环境）| pgvector=SQL HNSW（生产 Linux/Docker）| weaviate=独立向量库
     # fulltext_mode: ilike=关键词模糊（Windows/无 zhparser）| zhparser=中文分词全文检索（生产 Linux/Docker）
     vector_backend: str = "numpy"
     fulltext_mode: str = "ilike"
+
+    # Weaviate 独立向量库（vector_backend=weaviate 时生效；应用侧生成向量后传入，向量模式 NONE）
+    weaviate_host: str = "8.134.183.233"
+    weaviate_http_port: int = 8088
+    weaviate_grpc_port: int = 50051
+    weaviate_collection: str = "AinaDev"
 
     # 初始超管（可选，配置后首次启动自动创建；未配置则首个注册用户成为超管）
     admin_email: str = ""

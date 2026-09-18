@@ -1,6 +1,6 @@
 """帖子 API：发帖、Feed、详情、搜索、互动。"""
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
@@ -78,26 +78,27 @@ async def create_post(body: PostIn, user: User = Depends(get_current_user), db: 
     if not cat.allow_post:
         raise HTTPException(status_code=403, detail="该栏目不允许发帖")
 
+    # 发帖进入「审核中」状态：不直接发布，异步 AI 审核通过后才公开
     post = Post(
         category_id=body.category_id, author_id=user.id,
         title=body.title.strip(), body_md=body.body_md,
-        post_type=body.post_type, status="published", tags=body.tags[:5],
+        post_type=body.post_type, status="pending_review", tags=body.tags[:5],
         attachments=[a.model_dump() for a in (body.attachments or [])][:20],
     )
     db.add(post)
     await db.commit()
     await db.refresh(post)
 
-    # 触发 AI 原生流水线（worker 异步执行）
+    # 异步 AI 审核（worker 执行；审核通过后再触发 AI 回复流水线，两次调用分开）
     from app.tasks.worker import enqueue
 
     try:
-        await enqueue("run_pipeline_task", post.id, "post")
+        await enqueue("review_post_task", post.id)
     except Exception:
         # Redis 不可用时同步执行（降级不阻塞发帖）
-        from app.agent.runner import trigger_pipeline
+        from app.tasks.review_tasks import review_post
 
-        await trigger_pipeline(db, post.id, "post")
+        await review_post(db, post.id)
     return await _post_to_out(db, post, user)
 
 
@@ -142,9 +143,9 @@ async def get_post(
     db: AsyncSession = Depends(get_db),
 ):
     post = await db.get(Post, post_id)
-    if not post or post.deleted_at is not None or post.status not in ("published", "hidden", "pending_review"):
+    if not post or post.deleted_at is not None or post.status not in ("published", "hidden", "pending_review", "rejected"):
         raise HTTPException(status_code=404, detail="帖子不存在")
-    if post.status in ("hidden", "pending_review") and (not user or user.id != post.author_id):
+    if post.status in ("hidden", "pending_review", "rejected") and (not user or user.id != post.author_id):
         from app.models import CategoryHumanAdmin
 
         is_admin = await db.scalar(
@@ -305,7 +306,7 @@ async def unsubscribe_category(post_id: int, user: User = Depends(get_current_us
     if not post:
         raise HTTPException(status_code=404, detail="帖子不存在")
     sub = await db.scalar(
-        select(Subscription).where(
+        select(Subscription.id).where(
             Subscription.user_id == user.id, Subscription.category_id == post.category_id, Subscription.tag.is_(None)
         )
     )
@@ -359,18 +360,36 @@ async def search(
     page_size: int = Query(20, ge=1, le=50),
     db: AsyncSession = Depends(get_db),
 ):
-    """搜索：zhparser 中文分词 FTS（生产）或 ILIKE 兜底（Windows 开发）。"""
+    """搜索：jieba 中文分词 + 多词模糊匹配（默认，跨环境一致）；
+    zhparser 全文检索仅在配置 fulltext_mode=zhparser 且数据库已装扩展时启用。"""
     from sqlalchemy import text as sa_text
 
     from app.config import settings
 
     stmt = select(Post).where(Post.status == "published", Post.deleted_at.is_(None))
+
+    use_zhparser = False
     if settings.fulltext_mode == "zhparser":
+        try:
+            has_zh = await db.scalar(sa_text("SELECT 1 FROM pg_extension WHERE extname = 'zhparser'"))
+            use_zhparser = bool(has_zh)
+        except Exception:
+            use_zhparser = False
+
+    if use_zhparser:
         stmt = stmt.where(
             sa_text("posts.title @@ plainto_tsquery('zh', :q) OR posts.body_md @@ plainto_tsquery('zh', :q)").bindparams(q=q)
         )
     else:
-        stmt = stmt.where(or_(Post.title.ilike(f"%{q}%"), Post.body_md.ilike(f"%{q}%")))
+        # jieba 分词：query -> 词列表，所有词（AND）命中标题或正文
+        import jieba
+
+        tokens = [t.strip() for t in jieba.lcut(q) if t.strip()]
+        if not tokens:
+            tokens = [q]
+        conds = [or_(Post.title.ilike(f"%{t}%"), Post.body_md.ilike(f"%{t}%")) for t in tokens]
+        stmt = stmt.where(and_(*conds))
+
     if category_id:
         stmt = stmt.where(Post.category_id == category_id)
     stmt = stmt.order_by(Post.created_at.desc())
