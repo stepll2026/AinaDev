@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { http } from "@/lib/api";
+import { Modal } from "@/components/ui/Modal";
 
 type Model = {
   id: number;
@@ -25,7 +26,7 @@ const EMPTY = {
   api_key: "",
   chat_model: "",
   embedding_model: "",
-  embedding_dim: 2048,
+  embedding_dim: 1024,
   context_length: 128000,
   max_tokens: 2048,
   is_default: false,
@@ -62,7 +63,6 @@ export function ModelConfigPanel() {
   const [isNew, setIsNew] = useState(true);
   const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [msg, setMsg] = useState("");
-  const [showForm, setShowForm] = useState(false);
 
   const reload = () => {
     http.get<Model[]>("/admin/model-configs").then(setModels).catch(() => {});
@@ -73,7 +73,6 @@ export function ModelConfigPanel() {
     setEditing({ ...EMPTY });
     setIsNew(true);
     setTestResult(null);
-    setShowForm(true);
   };
 
   const openEdit = (m: Model) => {
@@ -85,7 +84,6 @@ export function ModelConfigPanel() {
     });
     setIsNew(false);
     setTestResult(null);
-    setShowForm(true);
   };
 
   const applyPreset = (name: string) => {
@@ -111,7 +109,7 @@ export function ModelConfigPanel() {
         await http.put(`/admin/model-configs/${id}`, body);
         setMsg("已保存（Key 留空则保持原值）");
       }
-      setShowForm(false);
+      setEditing(null);
       reload();
     } catch (e: any) {
       setMsg(e.message || "保存失败");
@@ -150,9 +148,39 @@ export function ModelConfigPanel() {
           <button onClick={openNew} className="rounded-md bg-[#0969da] px-3 py-1.5 text-[13px] text-white hover:bg-[#0550ae]">+ 新建模型配置</button>
         </div>
 
-        {showForm && editing && (
-          <div className="mb-4 rounded-lg border border-[#d0d7de] bg-[#f6f8fa] p-4">
-            <div className="mb-3 flex flex-wrap items-center gap-2">
+        <table className="w-full text-[13px]">
+          <thead>
+            <tr className="border-b border-[#d0d7de] text-left text-[#656d76]">
+              <th className="py-2 pr-2">名称</th><th className="py-2 pr-2">Base URL</th><th className="py-2 pr-2">Chat 模型</th><th className="py-2 pr-2">Embedding</th><th className="py-2 pr-2">维度</th><th className="py-2 pr-2">默认</th><th className="py-2 pr-2">状态</th><th className="py-2 pr-2">Key</th><th className="py-2">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {models.length === 0 && <tr><td colSpan={9} className="py-8 text-center text-[#656d76]">还没有模型配置，点击「+ 新建模型配置」添加</td></tr>}
+            {models.map((m) => (
+              <tr key={m.id} className="border-b border-[#d0d7de]/50">
+                <td className="py-2 pr-2 font-medium">{m.name}</td>
+                <td className="max-w-[220px] truncate py-2 pr-2 text-[#656d76]">{m.base_url}</td>
+                <td className="py-2 pr-2 font-mono">{m.chat_model}</td>
+                <td className="py-2 pr-2 font-mono">{m.embedding_model || "-"}</td>
+                <td className="py-2 pr-2">{m.embedding_dim}</td>
+                <td className="py-2 pr-2">{m.is_default ? "✅" : ""}</td>
+                <td className="py-2 pr-2">{m.enabled ? "启用" : <span className="text-[#9a6700]">停用</span>}</td>
+                <td className="py-2 pr-2">{m.has_api_key ? "已配置" : <span className="text-[#9a6700]">未填</span>}</td>
+                <td className="py-2 space-x-2">
+                  <button onClick={() => openEdit(m)} className="text-[#0969da] hover:underline">编辑</button>
+                  <button onClick={() => remove(m)} className="text-[#cf222e] hover:underline">删除</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 模型表单（模态） */}
+      <Modal open={!!editing} title={isNew ? "新建模型配置" : `编辑 · ${editing?.name || ""}`} width={720} onClose={() => setEditing(null)}>
+        {editing && (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-[12px] text-[#656d76]">快速模板：</span>
               {Object.keys(PRESETS).map((k) => (
                 <button key={k} onClick={() => applyPreset(k)} className="rounded-full border border-[#d0d7de] px-3 py-1 text-[12px] hover:bg-white">{k}</button>
@@ -200,44 +228,17 @@ export function ModelConfigPanel() {
                 </label>
               </div>
             </div>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2 pt-2">
               <button onClick={save} className="rounded-md bg-[#0969da] px-3 py-1.5 text-[13px] text-white hover:bg-[#0550ae]">保存</button>
-              <button onClick={testConnection} className="rounded-md border border-[#d0d7de] px-3 py-1.5 text-[13px] hover:bg-white">测试连接</button>
-              <button onClick={() => setShowForm(false)} className="rounded-md border border-[#d0d7de] px-3 py-1.5 text-[13px] hover:bg-white">取消</button>
+              <button onClick={testConnection} className="rounded-md border border-[#d0d7de] px-3 py-1.5 text-[13px] hover:bg-[#f3f4f6]">测试连接</button>
+              <button onClick={() => setEditing(null)} className="rounded-md border border-[#d0d7de] px-3 py-1.5 text-[13px] hover:bg-[#f3f4f6]">取消</button>
               {testResult && (
                 <span className={`text-[12px] ${testResult.ok ? "text-[#1a7f37]" : "text-[#cf222e]"}`}>{testResult.text}</span>
               )}
             </div>
           </div>
         )}
-
-        <table className="w-full text-[13px]">
-          <thead>
-            <tr className="border-b border-[#d0d7de] text-left text-[#656d76]">
-              <th className="py-2 pr-2">名称</th><th className="py-2 pr-2">Base URL</th><th className="py-2 pr-2">Chat 模型</th><th className="py-2 pr-2">Embedding</th><th className="py-2 pr-2">维度</th><th className="py-2 pr-2">默认</th><th className="py-2 pr-2">状态</th><th className="py-2 pr-2">Key</th><th className="py-2">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {models.length === 0 && <tr><td colSpan={9} className="py-8 text-center text-[#656d76]">还没有模型配置，点击「+ 新建模型配置」添加</td></tr>}
-            {models.map((m) => (
-              <tr key={m.id} className="border-b border-[#d0d7de]/50">
-                <td className="py-2 pr-2 font-medium">{m.name}</td>
-                <td className="max-w-[220px] truncate py-2 pr-2 text-[#656d76]">{m.base_url}</td>
-                <td className="py-2 pr-2 font-mono">{m.chat_model}</td>
-                <td className="py-2 pr-2 font-mono">{m.embedding_model || "-"}</td>
-                <td className="py-2 pr-2">{m.embedding_dim}</td>
-                <td className="py-2 pr-2">{m.is_default ? "✅" : ""}</td>
-                <td className="py-2 pr-2">{m.enabled ? "启用" : <span className="text-[#9a6700]">停用</span>}</td>
-                <td className="py-2 pr-2">{m.has_api_key ? "已配置" : <span className="text-[#9a6700]">未填</span>}</td>
-                <td className="py-2 space-x-2">
-                  <button onClick={() => openEdit(m)} className="text-[#0969da] hover:underline">编辑</button>
-                  <button onClick={() => remove(m)} className="text-[#cf222e] hover:underline">删除</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      </Modal>
     </div>
   );
 }
