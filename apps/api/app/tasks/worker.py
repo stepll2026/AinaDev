@@ -18,6 +18,14 @@ async def _session() -> AsyncSession:
 
 
 # ---------- 任务 ----------
+async def review_post_task(ctx: dict, post_id: int) -> str:
+    """发帖异步 AI 审核：通过→发布+触发 AI 回复；不通过→rejected。"""
+    from app.tasks.review_tasks import review_post
+
+    async with SessionLocal() as db:
+        return await review_post(db, post_id)
+
+
 async def run_pipeline_task(ctx: dict, post_id: int, content_type: str = "post") -> str:
     """发帖事件流水线（worker 执行，支持重试）。"""
     from app.agent.runner import trigger_pipeline
@@ -78,6 +86,7 @@ async def shutdown(ctx: dict) -> None:
 
 
 FUNCTIONS = [
+    review_post_task,
     run_pipeline_task,
     parse_rag_document_task,
     daily_news_task,

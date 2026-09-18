@@ -8,7 +8,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db import Base
 
 PostType = Enum("discussion", "question", "announcement", "news", name="post_type")
-PostStatus = Enum("draft", "pending_review", "published", "hidden", "deleted", name="post_status")
+PostStatus = Enum("draft", "pending_review", "rejected", "published", "hidden", "deleted", name="post_status")
 ReplyAuthorType = Enum("user", "ai_admin", "official", name="reply_author_type")
 ReplyStatus = Enum("published", "pending_review", "hidden", "deleted", name="reply_status")
 
