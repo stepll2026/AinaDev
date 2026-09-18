@@ -7,7 +7,7 @@ import { useAuth } from "@/lib/auth";
 import { Avatar, MarkdownView, TimeAgo } from "@/components/ui";
 import { Sidebar } from "@/components/Sidebar";
 import { AttachmentList, type AttachmentItem } from "@/components/AttachmentUploader";
-import { VditorEditor } from "@/components/VditorEditor";
+import { BytemdEditor } from "@/components/BytemdEditor";
 
 function CitationPanel({ citations }: { citations: any[] | null }) {
   const [open, setOpen] = useState(false);
@@ -236,7 +236,7 @@ function PostInner() {
               )}
               {user ? (
                 <>
-                  <VditorEditor value={body} onChange={setBody} placeholder="写下你的回复…（支持 Markdown；工具栏可直接插入图片 / 附件）" height={180} />
+                  <BytemdEditor value={body} onChange={setBody} placeholder="写下你的回复…（支持 Markdown；工具栏可直接插入图片 / 附件）" height={180} />
                   {error && <div className="mb-2 rounded bg-[#ffebe9] px-3 py-1.5 text-[13px] text-[#cf222e]">{error}</div>}
                   <div className="flex justify-end">
                     <button disabled={sending} className="rounded-md bg-[#0969da] px-4 py-1.5 text-[13px] font-medium text-white hover:bg-[#0550ae] disabled:opacity-60">

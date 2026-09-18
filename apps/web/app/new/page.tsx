@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { http } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { VditorEditor } from "@/components/VditorEditor";
+import { BytemdEditor } from "@/components/BytemdEditor";
 
 export default function NewPostPage() {
   const { user } = useAuth();
@@ -89,7 +89,7 @@ export default function NewPostPage() {
           className="w-full rounded-md border border-[#d0d7de] px-4 py-3 text-[20px] font-medium outline-none focus:border-[#0969da]"
         />
         <div className="overflow-hidden rounded-lg border border-[#d0d7de] bg-white">
-          <VditorEditor
+          <BytemdEditor
             value={body}
             onChange={setBody}
             placeholder="正文内容…（支持 Markdown、代码块、表格；工具栏可直接插入图片 / 附件）"
