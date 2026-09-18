@@ -6,6 +6,7 @@ import trafilatura
 from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.models import RagChunk, RagDocument
 from app.services.llm import LLMConfig, embed_texts
 
@@ -84,25 +85,38 @@ async def embed_and_store_chunks(
     cfg: LLMConfig,
     titles: list[str] | None = None,
 ) -> int:
-    """切片 → embedding → 入库（含 tsvector 全文索引列）。"""
+    """切片 → embedding → 入库（JSONB/pgvector + 可选 Weaviate + tsvector 全文索引列）。"""
     vectors = await embed_texts(cfg, chunks)
+    stored_ids: list[int] = []
     for i, (chunk, vec) in enumerate(zip(chunks, vectors)):
-        db.add(
-            RagChunk(
-                document_id=doc.id,
-                category_id=doc.category_id,
-                chunk_index=i,
-                title=(titles[i] if titles else None),
-                content=chunk,
-                embedding=vec,
-                metadata={"filename": doc.filename, "chunk_index": i},
-            )
+        row = RagChunk(
+            document_id=doc.id,
+            category_id=doc.category_id,
+            chunk_index=i,
+            title=(titles[i] if titles else None),
+            content=chunk,
+            embedding=vec,
+            metadata={"filename": doc.filename, "chunk_index": i},
         )
+        db.add(row)
+        await db.flush()
+        stored_ids.append(row.id)
     # 先落库 chunks（独立事务），避免后续 tsvector 失败污染
     await db.flush()
     doc.status = "ready"
     doc.chunk_count = len(chunks)
     await db.commit()
+
+    # Weaviate 同步（独立向量库；失败仅告警不阻塞主流程）
+    if settings.vector_backend == "weaviate":
+        from app.services.weaviate_service import upsert_chunk
+
+        for i, (chunk, vec) in enumerate(zip(chunks, vectors)):
+            await upsert_chunk(
+                chunk_id=stored_ids[i], document_id=doc.id, category_id=doc.category_id,
+                chunk_index=i, title=(titles[i] if titles else None),
+                content=chunk, filename=doc.filename, vector=vec,
+            )
 
     # tsvector 全文索引：仅当数据库已安装 zhparser 扩展时更新；否则静默跳过（走 ILIKE 兜底）
     try:
@@ -121,16 +135,29 @@ async def embed_and_store_chunks(
 
 
 async def rebuild_chunks(db: AsyncSession, doc_id: int, cfg: LLMConfig) -> None:
-    """删除并重建索引（换 embedding 模型后使用）。"""
+    """删除并重建索引（换 embedding 模型后使用；含 Weaviate 清理与重写）。"""
     doc = await db.get(RagDocument, doc_id)
     if not doc:
         return
     chunks = await db.scalars(select(RagChunk).where(RagChunk.document_id == doc_id).order_by(RagChunk.chunk_index))
-    texts = [c.content for c in chunks]
-    vectors = await embed_texts(cfg, texts)
     rows = chunks.all()
-    for row, vec in zip(rows, vectors):
-        row.embedding = vec
+    texts = [c.content for c in rows]
+    vectors = await embed_texts(cfg, texts)
+
+    if settings.vector_backend == "weaviate":
+        from app.services.weaviate_service import delete_document_chunks, upsert_chunk
+
+        await delete_document_chunks(doc_id)
+        for row, vec in zip(rows, vectors):
+            row.embedding = vec
+            await upsert_chunk(
+                chunk_id=row.id, document_id=doc.id, category_id=doc.category_id,
+                chunk_index=row.chunk_index, title=row.title, content=row.content,
+                filename=doc.filename, vector=vec,
+            )
+    else:
+        for row, vec in zip(rows, vectors):
+            row.embedding = vec
     await db.commit()
 
 
@@ -140,8 +167,13 @@ def _rrf_score(rank: int, k: int = 60) -> float:
 
 
 async def _vector_search(db: AsyncSession, category_id: int, qvec: list[float], top: int) -> list[tuple[int, float]]:
-    """向量检索：pgvector（生产）或 JSONB+numpy（Windows/降级）。"""
+    """向量检索：pgvector（生产）或 JSONB+numpy（Windows/降级）或 Weaviate（独立向量库）。"""
     from app.config import settings
+
+    if settings.vector_backend == "weaviate":
+        from app.services.weaviate_service import search_vectors
+
+        return await search_vectors(category_id, qvec, top)
 
     if settings.vector_backend == "pgvector":
         rows = await db.execute(

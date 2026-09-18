@@ -21,7 +21,7 @@ async def stats(admin: User = Depends(require_super_admin), db: AsyncSession = D
         post_count=await db.scalar(select(func.count(Post.id)).where(Post.deleted_at.is_(None))) or 0,
         reply_count=await db.scalar(select(func.count(Reply.id)).where(Reply.deleted_at.is_(None))) or 0,
         today_posts=await db.scalar(select(func.count(Post.id)).where(Post.created_at >= today, Post.deleted_at.is_(None))) or 0,
-        pending_reviews=await db.scalar(select(func.count(Post.id)).where(Post.status == "pending_review", Post.deleted_at.is_(None))) or 0,
+        pending_reviews=await db.scalar(select(func.count(Post.id)).where(Post.status.in_(["pending_review", "rejected"]), Post.deleted_at.is_(None))) or 0,
         open_reports=await db.scalar(select(func.count(Report.id)).where(Report.status == "open")) or 0,
         ai_replies=await db.scalar(select(func.count(Reply.id)).where(Reply.author_type == "ai_admin", Reply.deleted_at.is_(None))) or 0,
         doc_count=await db.scalar(select(func.count(RagDocument.id)).where(RagDocument.deleted_at.is_(None))) or 0,
@@ -90,9 +90,15 @@ async def get_site_config(admin: User = Depends(require_super_admin), db: AsyncS
         "mcp_api_key": settings.mcp_api_key,
         "upload_allowed_types": "png,jpg,jpeg,gif,webp,pdf,doc,docx,xls,xlsx,txt,md,csv,zip",
         "upload_max_size_mb": "10",
+        "review_prompt": "",
     }
     for k, v in defaults.items():
         data.setdefault(k, str(v))
+    # 审核提示词：未配置时返回默认预设，便于后台编辑
+    if not data.get("review_prompt"):
+        from app.services.compliance_service import DEFAULT_REVIEW_PROMPT
+
+        data["review_prompt"] = DEFAULT_REVIEW_PROMPT
     return data
 
 
@@ -109,6 +115,7 @@ async def update_site_config(body: SiteConfigIn, admin: User = Depends(require_s
         "invite_expire_days": settings.invite_expire_days,
         "upload_allowed_types": "png,jpg,jpeg,gif,webp,pdf,doc,docx,xls,xlsx,txt,md,csv,zip",
         "upload_max_size_mb": "10",
+        "review_prompt": "",
     }
     data = body.model_dump(exclude_unset=True)
     for key, default in mapping.items():

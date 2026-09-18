@@ -26,6 +26,20 @@ async def _can_manage(db: AsyncSession, user: User, category_id: int) -> bool:
 async def review_queue(user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
     items: list[ReviewItemOut] = []
 
+    # 0) AI 审核不通过的帖子（rejected，待人工处理：通过或删除）
+    rejected = list(await db.scalars(select(Post).where(Post.status == "rejected", Post.deleted_at.is_(None)).order_by(Post.created_at.asc())))
+    for p in rejected:
+        if not await _can_manage(db, user, p.category_id):
+            continue
+        author = await db.get(User, p.author_id)
+        items.append(
+            ReviewItemOut(
+                kind="post_rejected", id=p.id, title=p.title, body=p.body_md[:500],
+                author_name=author.name if author else None, created_at=p.created_at,
+                reason="AI 审核不通过，待人工处理",
+            )
+        )
+
     # 1) 合规中危帖（pending_review）
     posts = list(await db.scalars(select(Post).where(Post.status == "pending_review", Post.deleted_at.is_(None)).order_by(Post.created_at.asc())))
     for p in posts:
@@ -54,7 +68,7 @@ async def review_queue(user: User = Depends(get_current_user), db: AsyncSession 
         items.append(
             ReviewItemOut(
                 kind="reply_low_conf", id=r.id, target_id=r.post_id, target_type="reply",
-                title=f"AI 回复待审（帖子：{post.title[:60]}）", body=r.body_md[:500],
+                title=f"AI 回复待审（帖子：{post.title[:60]}", body=r.body_md[:500],
                 author_name=author.name if author else None, created_at=r.created_at,
                 reason="AI 自检低置信，待人工放行",
             )
@@ -84,7 +98,7 @@ async def review_queue(user: User = Depends(get_current_user), db: AsyncSession 
             items.append(
                 ReviewItemOut(
                     kind="report", id=rep.id, target_id=rep.target_id, target_type="reply",
-                    title=f"举报回复（帖子：{post.title[:50]}）", body=rep.reason,
+                    title=f"举报回复（帖子：{post.title[:50]}", body=rep.reason,
                     created_at=rep.created_at, reason=f"举报人 #{rep.reporter_id}",
                 )
             )
@@ -97,8 +111,38 @@ async def review_action(
     user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """kind: post_mid / reply_low_conf / report；action: approve/hide/delete/warn/dismiss。"""
-    if kind == "post_mid":
+    """kind: post_rejected / post_mid / reply_low_conf / report；action: approve/hide/delete/warn/dismiss。"""
+    if kind == "post_rejected":
+        # AI 审核不通过的帖子：人工通过（发布并触发 AI 回复）或删除
+        post = await db.get(Post, id)
+        if not post or not await _can_manage(db, user, post.category_id):
+            raise HTTPException(status_code=403, detail="无权操作该栏目")
+        if body.action == "approve":
+            post.status = "published"
+            post.human_needed = False
+            await db.commit()
+            # 人工放行后触发 AI 回复流水线（异步）
+            from app.tasks.worker import enqueue
+
+            try:
+                await enqueue("run_pipeline_task", post.id, "post")
+            except Exception:
+                from app.agent.runner import trigger_pipeline
+
+                await trigger_pipeline(db, post.id, "post")
+        elif body.action in ("hide", "delete"):
+            post.status = "hidden" if body.action == "hide" else "deleted"
+            from datetime import datetime, timezone
+
+            if body.action == "delete":
+                post.deleted_at = datetime.now(timezone.utc)
+            post.human_needed = True
+            await db.commit()
+        else:
+            raise HTTPException(status_code=400, detail="无效操作")
+        await audit(db, "user", user.id, f"review_rejected_{body.action}", "post", id)
+
+    elif kind == "post_mid":
         post = await db.get(Post, id)
         if not post or not await _can_manage(db, user, post.category_id):
             raise HTTPException(status_code=403, detail="无权操作该栏目")

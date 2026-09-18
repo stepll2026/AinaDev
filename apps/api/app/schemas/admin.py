@@ -52,6 +52,17 @@ class RagDocumentOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class RagChunkOut(BaseModel):
+    id: int
+    chunk_index: int
+    title: str | None
+    content: str
+    meta_data: dict | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 # ---------- 资讯源 ----------
 class NewsSourceIn(BaseModel):
     name: str
@@ -140,6 +151,7 @@ class SiteConfigIn(BaseModel):
     invite_expire_days: int | None = None
     upload_allowed_types: str | None = None   # 逗号分隔，如 "png,jpg,pdf"
     upload_max_size_mb: int | None = None     # 单文件大小上限 MB
+    review_prompt: str | None = None          # AI 内容审核提示词（后台可编辑）
 
 
 class StatsOut(BaseModel):

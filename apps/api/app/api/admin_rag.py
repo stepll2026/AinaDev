@@ -1,4 +1,4 @@
-"""管理：RAG 知识库（上传文件 / URL / 列表 / 删除 / 重建 / 启停）。"""
+"""管理：RAG 知识库（上传文件 / URL / 列表 / 删除 / 重建 / 启停 / 下载 / 切片）。"""
 import shutil
 from pathlib import Path
 
@@ -30,73 +30,69 @@ async def list_documents(category_id: int | None = None, admin: User = Depends(r
     stmt = select(RagDocument).where(RagDocument.deleted_at.is_(None))
     if category_id:
         stmt = stmt.where(RagDocument.category_id == category_id)
-    rows = list(await db.scalars(stmt.order_by(RagDocument.created_at.desc())))
-    return [_doc_out(d) for d in rows]
+    stmt = stmt.order_by(RagDocument.created_at.desc())
+    return [_doc_out(d) for d in await db.scalars(stmt)]
 
 
-@router.post("/upload", response_model=RagDocumentOut)
+@router.post("/upload")
 async def upload_document(
-    category_id: int = Form(...),
     file: UploadFile = File(...),
+    category_id: int = Form(...),
     admin: User = Depends(require_super_admin),
     db: AsyncSession = Depends(get_db),
 ):
-    ext = Path(file.filename or "").suffix.lower()
-    file_type = next((k for k, v in ALLOWED_TYPES.items() if v == ext), None)
-    if not file_type:
-        raise HTTPException(status_code=400, detail="仅支持 PDF / DOCX / MD / TXT")
+    from app.services.document_service import process_document
+    from app.tasks.worker import enqueue
 
-    upload_root = Path(settings.upload_dir)
-    upload_root.mkdir(parents=True, exist_ok=True)
-    dest = upload_root / f"doc_{admin.id}_{file.filename}"
+    ext = Path(file.filename or "").suffix.lower()
+    ftype = next((k for k, v in ALLOWED_TYPES.items() if v == ext), None)
+    if not ftype:
+        raise HTTPException(status_code=400, detail=f"不支持的文件类型 {ext}，仅支持：pdf/docx/md/txt")
+
+    import time
+
+    save_dir = Path(settings.upload_dir) / "rag" / str(time.time())
+    save_dir.mkdir(parents=True, exist_ok=True)
+    dest = save_dir / (file.filename or "unnamed")
     with dest.open("wb") as f:
         shutil.copyfileobj(file.file, f)
 
     doc = RagDocument(
-        category_id=category_id, filename=file.filename or "unnamed", file_type=file_type,
-        storage_path=str(dest), uploader_id=admin.id, status="parsing",
+        category_id=category_id, filename=file.filename or "unnamed",
+        storage_path=str(dest), file_type=ftype, status="pending", chunk_count=0, enabled=True,
     )
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
-
-    from app.tasks.worker import enqueue
-
     try:
         await enqueue("parse_rag_document_task", doc.id)
     except Exception:
-        from app.services.document_service import process_document
-
         await process_document(db, doc.id)
     await audit(db, "user", admin.id, "rag_doc_upload", "rag_document", doc.id, {"filename": doc.filename})
     return _doc_out(doc)
 
 
-@router.post("/url", response_model=RagDocumentOut)
+@router.post("/url")
 async def add_url_document(
-    category_id: int = Form(...),
     url: str = Form(...),
-    name: str | None = Form(None),
+    category_id: int = Form(...),
     admin: User = Depends(require_super_admin),
     db: AsyncSession = Depends(get_db),
 ):
+    from app.services.document_service import process_document
+    from app.tasks.worker import enqueue
+
     doc = RagDocument(
-        category_id=category_id, filename=name or url[:200], file_type="url",
-        storage_path=url, uploader_id=admin.id, status="parsing",
+        category_id=category_id, filename=url[:200], storage_path=url, file_type="url", status="pending", chunk_count=0, enabled=True,
     )
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
-
-    from app.tasks.worker import enqueue
-
     try:
         await enqueue("parse_rag_document_task", doc.id)
     except Exception:
-        from app.services.document_service import process_document
-
         await process_document(db, doc.id)
-    await audit(db, "user", admin.id, "rag_doc_add_url", "rag_document", doc.id, {"url": url})
+    await audit(db, "user", admin.id, "rag_doc_url", "rag_document", doc.id, {"url": url})
     return _doc_out(doc)
 
 
@@ -104,13 +100,58 @@ async def add_url_document(
 async def delete_document(doc_id: int, admin: User = Depends(require_super_admin), db: AsyncSession = Depends(get_db)):
     from datetime import datetime, timezone
 
+    from app.config import settings
+
     doc = await db.get(RagDocument, doc_id)
     if not doc:
         raise HTTPException(status_code=404, detail="文档不存在")
     doc.deleted_at = datetime.now(timezone.utc)
     await db.commit()
+    # Weaviate 同步清理
+    if settings.vector_backend == "weaviate":
+        from app.services.weaviate_service import delete_document_chunks
+
+        await delete_document_chunks(doc_id)
     await audit(db, "user", admin.id, "rag_doc_delete", "rag_document", doc_id)
     return {"ok": True}
+
+
+@router.get("/{doc_id}/download")
+async def download_document(doc_id: int, admin: User = Depends(require_super_admin), db: AsyncSession = Depends(get_db)):
+    """下载知识库文档（本地文件或 URL 类型跳转）。"""
+    from fastapi.responses import FileResponse, RedirectResponse
+
+    doc = await db.get(RagDocument, doc_id)
+    if not doc or doc.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    if doc.file_type == "url":
+        return RedirectResponse(url=doc.storage_path or "/")
+    path = Path(doc.storage_path or "")
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="文件不存在或已被清理")
+    return FileResponse(path=str(path), filename=doc.filename or path.name)
+
+
+@router.get("/{doc_id}/chunks")
+async def list_doc_chunks(doc_id: int, admin: User = Depends(require_super_admin), db: AsyncSession = Depends(get_db)):
+    """查看某文档的切片列表（含内容预览）。"""
+    from app.schemas import RagChunkOut
+
+    doc = await db.get(RagDocument, doc_id)
+    if not doc or doc.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="文档不存在")
+    rows = list(
+        await db.scalars(
+            select(RagChunk).where(RagChunk.document_id == doc_id).order_by(RagChunk.chunk_index).limit(500)
+        )
+    )
+    return [
+        RagChunkOut(
+            id=r.id, chunk_index=r.chunk_index, title=r.title, content=r.content,
+            meta_data=r.meta_data, created_at=r.created_at,
+        )
+        for r in rows
+    ]
 
 
 @router.post("/{doc_id}/toggle")
