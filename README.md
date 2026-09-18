@@ -2,7 +2,7 @@
 
 面向企业的 **AI 原生开发者社区**：发帖、回帖、知识库问答由 **LangGraph Agent 流水线** 自动运维（**发帖先经 AI 异步审核**，通过后才发布并触发 AI 回帖），并内置 **MCP 服务**，可接入豆包工作等智能体生态做每日运维。
 
-- 前端：Next.js 15（App Router）+ TypeScript + Tailwind + Vditor（富文本/Markdown 编辑器）
+- 前端：Next.js 15（App Router）+ TypeScript + Tailwind + ByteMD（Markdown 编辑器，完全本地化，无 CDN 依赖）
 - 后端：FastAPI + SQLAlchemy(async) + LangGraph 流水线 + ARQ 定时任务
 - 搜索：jieba 中文分词多词匹配（跨环境一致，不依赖数据库扩展）
 - 向量检索：**Weaviate 独立向量库**（应用侧生成向量）/ pgvector / JSONB+余弦（自动降级）
@@ -14,7 +14,7 @@
 
 | 模块 | 说明 |
 |---|---|
-| 社区论坛 | 多栏目、发帖/回帖/点赞/收藏/搜索/引用回复/置顶/精华/锁帖/问答已解决；编辑器为 Vditor（工具栏直接插入图片/附件） |
+| 社区论坛 | 多栏目、发帖/回帖/点赞/收藏/搜索/引用回复/置顶/精华/锁帖/问答已解决；编辑器为 ByteMD（工具栏直接插入图片/附件，完全本地化） |
 | 发帖 AI 审核 | 发帖后**不直接发布**，进入「审核中」（仅作者可见）；AI 异步审核通过才公开，不通过转 `rejected` 由管理员处理（通过/删除）；审核提示词后台可配 |
 | AI 原生运维 | 审核通过后才触发 AI 回帖流水线（**两次 AI 调用分开**）：路由 → RAG 检索 → 证据判定 → AI 生成回复 |
 | 无证据不回复 | Judge 节点相似度低于栏目阈值（默认 0.7）绝不回帖，转人工或明确告知 |
@@ -83,7 +83,7 @@
 ## 三、技术栈
 
 - **后端**：Python 3.12+ · FastAPI · SQLAlchemy 2 (async) · psycopg · LangGraph · fastmcp · ARQ · pydantic v2 · jieba（中文分词搜索）· weaviate-client
-- **前端**：Next.js 15 · React 19 · TypeScript · Tailwind CSS · Vditor（编辑器）
+- **前端**：Next.js 15 · React 19 · TypeScript · Tailwind CSS · ByteMD（编辑器，npm 本地打包，无 CDN 依赖）
 - **数据**：PostgreSQL 14+（可选 pgvector）· Redis 6+ · （可选）Weaviate
 - **LLM**：OpenAI 兼容协议（通义千问 DashScope / 火山方舟 / DeepSeek / OpenAI / 自建 vLLM / Ollama 均可）
 
@@ -301,7 +301,7 @@ npm run dev            # http://localhost:3000
 │   │   └── requirements.txt
 │   └── web/                    # Next.js 15 前端
 │       ├── app/                # 页面路由（首页/发帖/帖子/栏目/搜索/个人/后台）
-│       ├── components/         # 组件（Vditor 编辑器、后台各管理面板、模态弹窗）
+│       ├── components/         # 组件（ByteMD 编辑器、后台各管理面板、模态弹窗）
 │       └── lib/                # API 客户端 / 鉴权
 ├── docker/
 │   ├── nginx/nginx.conf        # 反代 /api /mcp /uploads
