@@ -7,7 +7,7 @@ import { EmojiPicker } from "@/components/EmojiPicker";
 
 type Cat = {
   id: number; slug: string; name: string; description?: string; icon?: string;
-  sort_order: number; allow_post: boolean; auto_reply_enabled: boolean;
+  sort_order: number; allow_post: boolean; post_permission: string; auto_reply_enabled: boolean;
   reply_threshold: number; notify_human_on_no_evidence: boolean;
   post_count?: number; ai_admin?: any; admins?: { user_id: number; name: string; email: string }[];
 };
@@ -34,7 +34,8 @@ export function CategoryManager() {
     if (!editing) return;
     await http.put(`/admin/categories/${editing.id}`, {
       name: editing.name, description: editing.description || "",
-      icon: editing.icon || "📁", allow_post: editing.allow_post,
+      icon: editing.icon || "📁", allow_post: editing.post_permission !== "closed",
+      post_permission: editing.post_permission,
       auto_reply_enabled: editing.auto_reply_enabled, reply_threshold: Number(editing.reply_threshold),
       notify_human_on_no_evidence: editing.notify_human_on_no_evidence,
     });
@@ -74,7 +75,7 @@ export function CategoryManager() {
 
       <div className="flex justify-end">
         <button
-          onClick={() => setCreating({ id: 0, slug: "", name: "", description: "", icon: "📁", sort_order: 0, allow_post: true, auto_reply_enabled: true, reply_threshold: 0.5, notify_human_on_no_evidence: true })}
+          onClick={() => setCreating({ id: 0, slug: "", name: "", description: "", icon: "📁", sort_order: 0, allow_post: true, post_permission: "public", auto_reply_enabled: true, reply_threshold: 0.5, notify_human_on_no_evidence: true })}
           className="rounded-md bg-[#0969da] px-4 py-2 text-[13px] text-white hover:bg-[#0550ae]"
         >
           + 新建栏目
@@ -122,7 +123,6 @@ export function CategoryManager() {
         </table>
       </div>
 
-      {/* 编辑栏目（模态） */}
       <Modal open={!!editing} title="编辑栏目" width={560} onClose={() => setEditing(null)}>
         {editing && (
           <div className="space-y-3">
@@ -133,11 +133,7 @@ export function CategoryManager() {
               </div>
               <div>
                 <label className="mb-1 block text-[12px] text-[#656d76]">图标</label>
-                <button
-                  type="button"
-                  onClick={() => setIconPickerFor("edit")}
-                  className="flex h-9 w-full items-center gap-2 rounded border border-[#d0d7de] px-2 text-sm hover:border-[#0969da]"
-                >
+                <button type="button" onClick={() => setIconPickerFor("edit")} className="flex h-9 w-full items-center gap-2 rounded border border-[#d0d7de] px-2 text-sm hover:border-[#0969da]">
                   <span className="text-[18px]">{editing.icon || "📁"}</span>
                   <span className="text-[#656d76]">点击选择</span>
                 </button>
@@ -148,10 +144,15 @@ export function CategoryManager() {
               <textarea value={editing.description || ""} onChange={(e) => setEditing({ ...editing, description: e.target.value })} rows={2} className="w-full rounded border border-[#d0d7de] px-2 py-1.5 text-sm" />
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={editing.allow_post} onChange={(e) => setEditing({ ...editing, allow_post: e.target.checked })} /> 允许发帖
-              </label>
-              <label className="flex items-center gap-2 text-sm">
+              <div>
+                <label className="mb-1 block text-[12px] text-[#656d76]">发帖权限</label>
+                <select value={editing.post_permission || "public"} onChange={(e) => setEditing({ ...editing, post_permission: e.target.value })} className="w-full rounded border border-[#d0d7de] px-2 py-1.5 text-sm">
+                  <option value="public">公开（所有成员可发）</option>
+                  <option value="staff_only">仅管理员可发</option>
+                  <option value="closed">关闭（仅系统/Agent）</option>
+                </select>
+              </div>
+              <label className="flex items-center gap-2 pt-6 text-sm">
                 <input type="checkbox" checked={editing.auto_reply_enabled} onChange={(e) => setEditing({ ...editing, auto_reply_enabled: e.target.checked })} /> 自动回复
               </label>
               <div>
@@ -170,7 +171,6 @@ export function CategoryManager() {
         )}
       </Modal>
 
-      {/* 新建栏目（模态） */}
       <Modal open={!!creating} title="新建栏目" width={560} onClose={() => setCreating(null)}>
         {creating && (
           <div className="space-y-3">
@@ -185,11 +185,7 @@ export function CategoryManager() {
               </div>
               <div>
                 <label className="mb-1 block text-[12px] text-[#656d76]">图标</label>
-                <button
-                  type="button"
-                  onClick={() => setIconPickerFor("create")}
-                  className="flex h-9 w-full items-center gap-2 rounded border border-[#d0d7de] px-2 text-sm hover:border-[#0969da]"
-                >
+                <button type="button" onClick={() => setIconPickerFor("create")} className="flex h-9 w-full items-center gap-2 rounded border border-[#d0d7de] px-2 text-sm hover:border-[#0969da]">
                   <span className="text-[18px]">{creating.icon || "📁"}</span>
                   <span className="text-[#656d76]">点击选择</span>
                 </button>
@@ -199,6 +195,14 @@ export function CategoryManager() {
               <label className="mb-1 block text-[12px] text-[#656d76]">描述</label>
               <textarea value={creating.description || ""} onChange={(e) => setCreating({ ...creating, description: e.target.value })} rows={2} className="w-full rounded border border-[#d0d7de] px-2 py-1.5 text-sm" />
             </div>
+            <div>
+              <label className="mb-1 block text-[12px] text-[#656d76]">发帖权限</label>
+              <select value={creating.post_permission || "public"} onChange={(e) => setCreating({ ...creating, post_permission: e.target.value })} className="w-full rounded border border-[#d0d7de] px-2 py-1.5 text-sm">
+                <option value="public">公开（所有成员可发）</option>
+                <option value="staff_only">仅管理员可发</option>
+                <option value="closed">关闭（仅系统/Agent）</option>
+              </select>
+            </div>
             <div className="flex justify-end gap-2 pt-2">
               <button onClick={() => setCreating(null)} className="rounded border border-[#d0d7de] px-3 py-1.5 text-[13px]">取消</button>
               <button onClick={createCategory} className="rounded-md bg-[#0969da] px-3 py-1.5 text-[13px] text-white">创建</button>
@@ -207,7 +211,6 @@ export function CategoryManager() {
         )}
       </Modal>
 
-      {/* AI 管理员配置（模态） */}
       <Modal open={!!aiEditing} title={`AI 管理员配置 · ${aiEditing?.name || ""}`} width={640} onClose={() => setAiEditing(null)}>
         {aiEditing && (
           <div className="space-y-3">
@@ -220,12 +223,10 @@ export function CategoryManager() {
         )}
       </Modal>
 
-      {/* 绑定管理员（模态，可搜索） */}
       <Modal open={!!adminBinding} title={`绑定管理员 · ${adminBinding?.name || ""}`} width={520} onClose={() => setAdminBinding(null)}>
         {adminBinding && <AdminPicker cat={adminBinding} onDone={() => { setAdminBinding(null); reload(); }} />}
       </Modal>
 
-      {/* 图标选择器 */}
       <EmojiPicker
         open={!!iconPickerFor}
         value={iconPickerFor === "edit" ? editing?.icon || "" : creating?.icon || ""}
@@ -304,13 +305,7 @@ function AdminPicker({ cat, onDone }: { cat: Cat; onDone: () => void }) {
   return (
     <div className="space-y-3">
       <div className="flex gap-2">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && search()}
-          placeholder="搜索 ID / 邮箱 / 名字"
-          className="flex-1 rounded border border-[#d0d7de] px-2 py-1.5 text-sm"
-        />
+        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} placeholder="搜索 ID / 邮箱 / 名字" className="flex-1 rounded border border-[#d0d7de] px-2 py-1.5 text-sm" />
         <button onClick={search} className="rounded-md border border-[#d0d7de] px-3 py-1.5 text-[13px] hover:bg-[#f3f4f6]">搜索</button>
       </div>
       <div className="max-h-[320px] space-y-1 overflow-y-auto">
