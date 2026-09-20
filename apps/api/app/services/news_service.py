@@ -54,6 +54,15 @@ async def digest_and_publish(db: AsyncSession, source: AiNewsSource) -> int:
         await db.commit()
         return 0
 
+    # 目标栏目兜底：未配置时自动落到「AI 资讯」栏目（slug=ai-news）
+    category_id = source.target_category_id
+    if not category_id:
+        from app.models import Category
+        cat = await db.scalar(select(Category).where(Category.slug == "ai-news"))
+        if cat is None:
+            raise RuntimeError("未配置资讯栏目（AI 资讯），请在资讯源中指定目标栏目")
+        category_id = cat.id
+
     cfg = await get_default_llm_config(db)
     ops = await db.scalar(select(User).where(User.email == "ops-agent@community.local"))
     author_id = ops.id if ops else 0
@@ -72,7 +81,7 @@ async def digest_and_publish(db: AsyncSession, source: AiNewsSource) -> int:
         body = f"{summary}\n\n> 来源：[{item['title']}]({item['url']})"
         db.add(
             Post(
-                category_id=source.target_category_id,
+                category_id=category_id,
                 author_id=author_id,
                 title=item["title"][:280],
                 body_md=body,
