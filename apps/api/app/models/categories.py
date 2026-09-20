@@ -17,6 +17,8 @@ class Category(Base):
     icon: Mapped[str | None] = mapped_column(String(32), nullable=True)  # emoji
     sort_order: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     allow_post: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    # 发帖权限：public=所有成员可发 / staff_only=仅管理员或栏目管理员 / closed=仅系统/Agent
+    post_permission: Mapped[str] = mapped_column(String(20), default="public", server_default="public")
     auto_reply_enabled: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     reply_threshold: Mapped[float] = mapped_column(Float, default=0.7, server_default="0.7")
     notify_human_on_no_evidence: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")

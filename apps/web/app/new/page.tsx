@@ -66,11 +66,17 @@ export default function NewPostPage() {
       <form onSubmit={submit} className="space-y-4">
         <div className="flex gap-3">
           <select value={categoryId} onChange={(e) => setCategoryId(Number(e.target.value))} className="rounded-md border border-[#d0d7de] bg-white px-3 py-2 text-sm outline-none focus:border-[#0969da]">
-            {cats.map((c) => (
-              <option key={c.id} value={c.id} disabled={!c.allow_post}>
-                {c.icon} {c.name}
-              </option>
-            ))}
+            {cats.map((c) => {
+              const perm = c.post_permission || (c.allow_post ? "public" : "closed");
+              const isAdmin = user?.role === "super_admin";
+              const disabled = perm === "closed" || (perm === "staff_only" && !isAdmin);
+              const suffix = perm === "staff_only" ? "（仅管理员）" : perm === "closed" ? "（关闭）" : "";
+              return (
+                <option key={c.id} value={c.id} disabled={disabled}>
+                  {c.icon} {c.name}{suffix}
+                </option>
+              );
+            })}
           </select>
           <select value={postType} onChange={(e) => setPostType(e.target.value)} className="rounded-md border border-[#d0d7de] bg-white px-3 py-2 text-sm outline-none">
             <option value="discussion">讨论</option>
@@ -88,24 +94,11 @@ export default function NewPostPage() {
           required
           className="w-full rounded-md border border-[#d0d7de] px-4 py-3 text-[20px] font-medium outline-none focus:border-[#0969da]"
         />
-        <div className="overflow-hidden rounded-lg border border-[#d0d7de] bg-white">
-          <BytemdEditor
-            value={body}
-            onChange={setBody}
-            placeholder="正文内容…（支持 Markdown、代码块、表格；工具栏可直接插入图片 / 附件）"
-            height={380}
-            cacheId="post-editor"
-          />
-        </div>
+        <BytemdEditor value={body} onChange={setBody} />
         {error && <div className="rounded-md bg-[#ffebe9] px-3 py-2 text-[13px] text-[#cf222e]">{error}</div>}
-        <div className="flex items-center gap-3">
-          <button disabled={loading} className="rounded-md bg-[#0969da] px-5 py-2 text-sm font-medium text-white hover:bg-[#0550ae] disabled:opacity-60">
-            {loading ? "提交中…" : "发布"}
-          </button>
-          <span className="text-[12px] text-[#656d76]">
-            发帖后将先经过 AI 自动审核（仅自己可见），审核通过后公开；@ AI 管理员时若有证据会自动回复
-          </span>
-        </div>
+        <button type="submit" disabled={loading} className="rounded-md bg-[#0969da] px-5 py-2.5 text-[14px] text-white disabled:opacity-50">
+          {loading ? "发布中…" : "发布"}
+        </button>
       </form>
     </div>
   );
