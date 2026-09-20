@@ -9,6 +9,20 @@ import { Sidebar } from "@/components/Sidebar";
 import { AttachmentList, type AttachmentItem } from "@/components/AttachmentUploader";
 import { BytemdEditor } from "@/components/BytemdEditor";
 
+/** 去掉 Markdown 语法符号，取纯文本摘要 */
+function stripMd(s: string): string {
+  return (s || "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/`([^`]*)`/g, "$1")
+    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "")
+    .replace(/^>\s?/gm, "")
+    .replace(/[*_~]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function CitationPanel({ citations }: { citations: any[] | null }) {
   const [open, setOpen] = useState(false);
   if (!citations || citations.length === 0) return null;
@@ -42,7 +56,7 @@ function PostInner() {
   const [post, setPost] = useState<any>(null);
   const [replies, setReplies] = useState<any[]>([]);
   const [body, setBody] = useState("");
-  const [parentReply, setParentReply] = useState<number | null>(null);
+  const [parentReply, setParentReply] = useState<any | null>(null);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
@@ -60,7 +74,7 @@ function PostInner() {
     setSending(true);
     setError("");
     try {
-      await http.post(`/posts/${params.id}/replies`, { post_id: Number(params.id), body_md: body, parent_reply_id: parentReply, at_ai: false, attachments });
+      await http.post(`/posts/${params.id}/replies`, { post_id: Number(params.id), body_md: body, parent_reply_id: parentReply?.id ?? null, at_ai: false, attachments });
       setBody("");
       setParentReply(null);
       setAttachments([]);
@@ -95,6 +109,10 @@ function PostInner() {
 
   return (
     <div className="mx-auto flex max-w-[1280px] gap-8 px-4 py-6">
+      <style>{`
+        .reply-row { transition: background-color 0.3s; }
+        .reply-row.reply-flash { background-color: #fff8c5; }
+      `}</style>
       <Sidebar />
       <main className="min-w-0 flex-1">
         {/* 面包屑 Path */}
@@ -166,8 +184,10 @@ function PostInner() {
           <h2 className="mb-2 text-[15px] font-semibold text-[#24292f]">回复（{replies.length}）</h2>
           <div className="rounded-lg border border-[#d0d7de] bg-white">
             {replies.length === 0 && <div className="px-4 py-10 text-center text-[13px] text-[#656d76]">暂无回复{post.human_needed ? " · AI 标记为需要人工介入" : ""}</div>}
-            {replies.map((r, idx) => (
-              <div key={r.id} className={`flex gap-3 px-4 py-3 ${idx < replies.length - 1 ? "border-b border-[#d0d7de]/50" : ""}`}>
+            {replies.map((r, idx) => {
+              const parent = r.parent_reply_id ? replies.find((x) => x.id === r.parent_reply_id) : null;
+              return (
+              <div key={r.id} id={`reply-${r.id}`} className={`reply-row flex gap-3 px-4 py-3 ${idx < replies.length - 1 ? "border-b border-[#d0d7de]/50" : ""}`}>
                 <div className="flex flex-col items-center">
                   <Avatar name={r.author_name} url={r.author_avatar} size={32} isAi={r.author_type === "ai_admin" || r.author_type === "official"} />
                   {idx < replies.length - 1 && <div className="mt-1 w-px flex-1 bg-[#d0d7de]" />}
@@ -184,7 +204,7 @@ function PostInner() {
                     <TimeAgo iso={r.created_at} />
                     <button
                       onClick={() => {
-                        setParentReply(r.id);
+                        setParentReply(r);
                         window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
                       }}
                       className="ml-2 text-[12px] text-[#0969da] hover:underline"
@@ -192,6 +212,21 @@ function PostInner() {
                       引用
                     </button>
                   </div>
+                  {parent && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const el = document.getElementById(`reply-${parent.id}`);
+                        el?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        el?.classList.add("reply-flash");
+                        setTimeout(() => el?.classList.remove("reply-flash"), 1600);
+                      }}
+                      className="mb-2 block w-full rounded-md border-l-4 border-[#d0d7de] bg-[#f6f8fa] px-3 py-2 text-left hover:bg-[#eaeef2]"
+                    >
+                      <div className="text-[12px] text-[#656d76]">回复 @{parent.author_name || `#${parent.id}`}：</div>
+                      <div className="mt-0.5 line-clamp-2 text-[13px] text-[#57606a]">{stripMd(parent.body_md) || "…"}</div>
+                    </button>
+                  )}
                   <div className="mt-1.5">
                     <MarkdownView content={r.body_md} />
                   </div>
@@ -223,15 +258,18 @@ function PostInner() {
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {!post.locked && (
             <form onSubmit={submitReply} className="mt-4 rounded-lg border border-[#d0d7de] bg-white p-4">
               {parentReply && (
                 <div className="mb-2 flex items-center justify-between rounded bg-[#eaeef2] px-3 py-1.5 text-[12px] text-[#656d76]">
-                  引用回复 #{parentReply}
-                  <button type="button" onClick={() => setParentReply(null)} className="text-[#cf222e]">取消</button>
+                  <span className="min-w-0 truncate">
+                    引用 @{parentReply.author_name || `#${parentReply.id}`}：{stripMd(parentReply.body_md) || "…"}
+                  </span>
+                  <button type="button" onClick={() => setParentReply(null)} className="ml-2 shrink-0 text-[#cf222e]">取消</button>
                 </div>
               )}
               {user ? (
