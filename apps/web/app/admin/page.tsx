@@ -15,10 +15,11 @@ import { SettingsPanel } from "@/components/admin/SettingsPanel";
 import { TicketPanel } from "@/components/admin/TicketPanel";
 import { ExternalAgentsPanel } from "@/components/admin/ExternalAgentsPanel";
 import { SsoPanel } from "@/components/admin/SsoPanel";
+import { BannersPanel } from "@/components/admin/BannersPanel";
 
 import { SdkPagesPanel } from "@/components/admin/SdkPagesPanel";
 
-type TabKey = "overview" | "reviews" | "news" | "users" | "categories" | "rag" | "models" | "external" | "audit" | "tickets" | "sso" | "settings" | "other" | "sdk";
+type TabKey = "overview" | "reviews" | "news" | "users" | "categories" | "rag" | "models" | "external" | "audit" | "tickets" | "sso" | "settings" | "other" | "sdk" | "banners";
 
 const MENU: { key: TabKey; label: string; icon: string }[] = [
   { key: "overview", label: "总览", icon: "📊" },
@@ -33,6 +34,7 @@ const MENU: { key: TabKey; label: string; icon: string }[] = [
   { key: "audit", label: "审计", icon: "🔍" },
   { key: "tickets", label: "奖励设置", icon: "⭐" },
   { key: "settings", label: "设置", icon: "⚙️" },
+  { key: "banners", label: "轮播图设置", icon: "🖼️" },
   { key: "sdk", label: "SDK 页面", icon: "🔗" },
   { key: "other", label: "其他", icon: "⋯" },
 ];
@@ -50,6 +52,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   audit: "审计日志",
   tickets: "奖励（⭐ Ticket）配置",
   settings: "站点设置",
+  banners: "轮播图设置",
   other: "其他功能",
   sdk: "SDK 页面配置",
 };
@@ -122,6 +125,7 @@ export default function AdminPage() {
           {tab === "audit" && <AuditPanel />}
           {tab === "tickets" && <TicketPanel />}
           {tab === "settings" && <SettingsPanel />}
+          {tab === "banners" && <BannersPanel />}
           {tab === "sdk" && <SdkPagesPanel />}
           {tab === "other" && (
             <div className="rounded-lg border border-[#d0d7de] bg-white p-6">
