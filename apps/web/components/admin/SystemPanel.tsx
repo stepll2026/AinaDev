@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { http } from "@/lib/api";
+import { LoginCardFields } from "./LoginCardFields";
 
 export function SystemPanel() {
   const [stats, setStats] = useState<any>(null);
@@ -21,6 +22,8 @@ export function SystemPanel() {
   const saveSite = async () => {
     await http.put("/admin/site-config", {
       site_name: site.site_name || null,
+      login_title: site.login_title,
+      login_subtitle: site.login_subtitle,
       site_description: site.site_description || null,
       mcp_api_key: site.mcp_api_key || null,
       upload_allowed_types: site.upload_allowed_types || null,
@@ -58,6 +61,7 @@ export function SystemPanel() {
       <div className="rounded-lg border border-[#d0d7de] bg-white p-4">
         <h3 className="mb-3 text-[15px] font-semibold">站点配置</h3>
         <div className="grid grid-cols-2 gap-3">
+          <LoginCardFields site={site} onChange={(patch) => setSite({ ...site, ...patch })} />
           <div>
             <label className="mb-1 block text-[12px] text-[#656d76]">站点名称</label>
             <input value={site.site_name || ""} onChange={(e) => setSite({ ...site, site_name: e.target.value })} className="w-full rounded border border-[#d0d7de] px-2 py-1.5 text-sm" />

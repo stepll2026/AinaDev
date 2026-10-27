@@ -10,6 +10,8 @@ from app.schemas import AgentRunOut, AuditLogOut, SiteConfigIn, StatsOut
 
 router = APIRouter(prefix="/api/admin", tags=["admin-system"])
 
+LOGIN_DEFAULTS = {"login_title": "AI 开发者社区", "login_subtitle": "企业 AI 原生开发者社区 · 内部私有部署"}
+
 
 @router.get("/stats", response_model=StatsOut)
 async def stats(admin: User = Depends(require_super_admin), db: AsyncSession = Depends(get_db)):
@@ -86,6 +88,7 @@ async def get_site_config(admin: User = Depends(require_super_admin), db: AsyncS
     data = {r.key: r.value for r in rows}
     # 合并默认值（未在库中设置的项）
     defaults = {
+        **LOGIN_DEFAULTS,
         "site_name": settings.site_name, "site_description": settings.site_description,
         "mcp_api_key": settings.mcp_api_key,
         "upload_allowed_types": "png,jpg,jpeg,gif,webp,pdf,doc,docx,xls,xlsx,txt,md,csv,zip,mp4,webm",
@@ -108,12 +111,14 @@ async def site_config_public(db: AsyncSession = Depends(get_db)):
     """公开接口：前端顶栏和 HTML title 用，不需要登录。"""
     from app.config import settings
     from app.models import SiteConfig
-    rows = list(await db.scalars(select(SiteConfig).where(SiteConfig.key.in_(["site_name", "site_description", "logo_url"]))))
+    rows = list(await db.scalars(select(SiteConfig).where(SiteConfig.key.in_(["site_name", "site_description", "logo_url", "login_title", "login_subtitle"]))))
     data = {r.key: r.value for r in rows}
     return {
         "site_name": data.get("site_name") or settings.site_name,
         "site_description": data.get("site_description") or settings.site_description,
         "logo_url": data.get("logo_url") or "",
+        "login_title": data.get("login_title", "").strip() or LOGIN_DEFAULTS["login_title"],
+        "login_subtitle": data.get("login_subtitle", LOGIN_DEFAULTS["login_subtitle"]),
     }
 
 
@@ -123,6 +128,7 @@ async def update_site_config(body: SiteConfigIn, admin: User = Depends(require_s
     from app.models import SiteConfig
 
     mapping = {
+        **LOGIN_DEFAULTS,
         "site_name": settings.site_name, "site_description": settings.site_description,
         "mcp_api_key": settings.mcp_api_key, "smtp_host": settings.smtp_host,
         "smtp_port": settings.smtp_port, "smtp_user": settings.smtp_user,
