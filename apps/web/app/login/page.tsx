@@ -16,9 +16,20 @@ export default function LoginPage() {
   const [invite, setInvite] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [branding, setBranding] = useState({
+    login_title: "AI 开发者社区",
+    login_subtitle: "企业 AI 原生开发者社区 · 内部私有部署",
+  });
   const [sso, setSso] = useState<{ enabled: boolean; label: string }>({ enabled: false, label: "企业统一身份登录" });
 
   useEffect(() => {
+    http.get("/admin/site-config-public").then((config: any) => {
+      setBranding((current) => ({
+        login_title: config.login_title?.trim() || current.login_title,
+        login_subtitle: typeof config.login_subtitle === "string" ? config.login_subtitle : current.login_subtitle,
+      }));
+    }).catch(() => {});
+
     if (new URLSearchParams(window.location.search).get("sso_error") === "1") {
       setError("企业登录结果验证失败，请重新登录或联系管理员。");
     }
@@ -52,8 +63,8 @@ export default function LoginPage() {
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-4">
       <div className="rounded-lg border border-[#d0d7de] bg-white p-8 shadow-sm">
-        <h1 className="text-[24px] font-bold text-[#24292f]">AI 开发者社区</h1>
-        <p className="mt-1 text-[13px] text-[#656d76]">企业 AI 原生开发者社区 · 内部私有部署</p>
+        <h1 className="break-words text-[24px] font-bold text-[#24292f]">{branding.login_title}</h1>
+        {branding.login_subtitle && <p className="mt-1 break-words text-[13px] text-[#656d76]">{branding.login_subtitle}</p>}
         <div className="mt-6 mb-4 flex gap-1 border-b border-[#d0d7de]">
           {(["login", "register"] as const).map((m) => (
             <button
@@ -102,7 +113,7 @@ export default function LoginPage() {
             </div>
             <button
               onClick={ssoLogin}
-              className="mt-4 w-full rounded-md border border-[#d0d7de] bg-white py-2 text-sm font-medium text-[#24292f] hover:border-[#0969da] hover:text-[#0969da]"
+              className="mt-4 w-full break-words rounded-md border border-[#d0d7de] bg-white px-3 py-2 text-sm font-medium text-[#24292f] hover:border-[#0969da] hover:text-[#0969da]"
             >
               🔐 {sso.label}
             </button>
